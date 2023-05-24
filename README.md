@@ -1,5 +1,5 @@
 # IFDS-Algorithm
-Path planning algorithm based on Interfered Fluid Dynamical System (IFDS)
+A path planning algorithm based on Interfered Fluid Dynamical System (IFDS)
 
 # Note
 Work in-progress (Master's Thesis and AIAA submission)
