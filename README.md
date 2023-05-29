@@ -5,17 +5,25 @@ A path planning algorithm based on Interfered Fluid Dynamical System (IFDS)
 Work in-progress (Master's Thesis and AIAA submission)
 
 # Preliminary Results
-![8_obj_1](https://github.com/komxun/IFDS-Algorithm/assets/133139057/9ec27bd4-2970-447e-83c7-81024161fa4e)
 
-![12_obj_3_1](https://github.com/komxun/IFDS-Algorithm/assets/133139057/dd1063cc-567d-4e16-83f7-1e7f51ea7a64)
-![12_obj_3_2](https://github.com/komxun/IFDS-Algorithm/assets/133139057/94eea285-a39a-416d-9ade-b4a8d41139ff)
-![12_obj_3_3](https://github.com/komxun/IFDS-Algorithm/assets/133139057/a3b3ef90-d1ec-4f41-8434-f6dd52ba734a)
+## The effect of Shape-following parameter ($SF$)
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/3642e2b2-43c8-4bc1-8086-a390ba167e2f)
 
-![12_obj_2_1](https://github.com/komxun/IFDS-Algorithm/assets/133139057/b8c43ca7-fd65-4f9f-81a0-740c443991d5)
-![12_obj_2_2](https://github.com/komxun/IFDS-Algorithm/assets/133139057/4131e17a-12ec-499b-90b8-d974bc1e4220)
+## The effect of $\rho_{0}$
+![2obj_sf1_M1](https://github.com/komxun/IFDS-Algorithm/assets/133139057/99f9778b-a29f-4107-9527-a9161be30123)
+![2obj_sf1_rho10_M2](https://github.com/komxun/IFDS-Algorithm/assets/133139057/2b6cde3a-37ec-4b2b-9993-70b68ff04bc6)
+![2obj_sf1_M1_topview](https://github.com/komxun/IFDS-Algorithm/assets/133139057/43215a9e-e85d-4222-94d7-75603f2e2615)
+![2obj_sf1_rho10_M2_topview](https://github.com/komxun/IFDS-Algorithm/assets/133139057/9e7df2d1-838a-4e89-98d6-94f08d448b28)
 
-![12_obj_1](https://github.com/komxun/IFDS-Algorithm/assets/133139057/daecb5a0-40df-4a65-b2f2-8237ba52c275)
-![12_obj_1_2](https://github.com/komxun/IFDS-Algorithm/assets/133139057/0ec27c61-f264-41ed-938e-88bf792d7ec8)
+
+## Single Static Obstacle Avoidance
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/bb710c35-8df5-4739-958e-44b4c6e48c06)
+
+## Multiple Static Obstacles Avoidance
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/c6e6e666-75ed-4bfa-9605-5144fa066508)
+
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/8e695666-1360-40c6-9819-c1c4079db8b8)
+
 
 
 # References
