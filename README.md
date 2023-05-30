@@ -22,7 +22,9 @@ Work in-progress (Master's Thesis and AIAA submission)
 ## Multiple Static Obstacles Avoidance
 ![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/c6e6e666-75ed-4bfa-9605-5144fa066508)
 
-![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/8e695666-1360-40c6-9819-c1c4079db8b8)
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/f9573a2d-f77a-43e9-bb89-db4d1d51cb8e)
+
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/93cc10ae-9936-432e-8a53-565c186609f5)
 
 
 
