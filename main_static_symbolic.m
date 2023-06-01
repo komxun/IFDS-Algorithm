@@ -1,16 +1,20 @@
 clc, clear, close all
 tic
-global numObj Field
-numObj = 0;
-Field = struct;
+
+% Initialization
+syms X Y Z 
+% assume([X Y Z], 'real')
+% assumptions([X Y Z])
+Field = struct('numObj', uint8(0));
+% digits(2)
+
 % Set-up Parameters
 tsim = 400;          % [s] simulation total time 
 dt = 0.1;            % [s] simulation time step
 C = 30;              % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
-simMode = 1;         % 1: by time, 2: by target distance
-multiTarget = 0;     % 1: multi-target 0: single-target]
-digits(2)
+simMode = uint8(1);         % 1: by time, 2: by target distance
+multiTarget = uint8(0);     % 1: multi-target 0: single-target]
 
 % Starting location
 Xini = 0;
@@ -23,82 +27,71 @@ Yfinal = 0;
 Zfinal = 10;
 
 % Tuning Parameters
-sf = 1;   % Shape-following demand (1=on, 0=off)
-rho0 = 4;        % Repulsive parameter (rho >= 0)
+sf = uint8(1);   % Shape-following demand (1=on, 0=off)
+rho0 = 2;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;    % Tangential parameter 
-
-Field.Param.sf = sf;
-Field.Param.rho0 = rho0;
-Field.Param.sigma0 = sigma0;
 
 %----------- Note -------------
 % Good: rho0 = 2, simga0 = 0.01
 % Algorihtm stills doesnt work for overlapped objects
 %------------------------------
 
-% UAV position XYZ
-syms X Y Z 
-assume([X Y Z], 'real')
-% assumptions([X Y Z])
+% Saving to struct
+Field.Param.sf = sf;
+Field.Param.rho0 = rho0;
+Field.Param.sigma0 = sigma0;
+Field.C = C;
 
-% Obstacles Creation
-scene = 0;
-
+% ----- Obstacles Creation----
+scene = uint8(0);
+%-----------------------------
 switch scene
     case 0  % Single object
-        [Field.Obj(1).Gamma, Field.Obj(1).dGdx, Field.Obj(1).dGdy, Field.Obj(1).dGdz] ...
-            = create_cone(100, 5, 0, 50, 80);
+        Field = create_cone(100, 5, 0, 50, 80, Field, X, Y, Z);
         
     case 1 % single(complex) object
-        Field.Obj(1).Gamma = create_cylinder(100, 5, 0, 25, 200);
-        Field.Obj(2).Gamma = create_pipe(60, 20, 60, 80, 5);
-        Field.Obj(3).Gamma = create_pipe(130, -30, 30, 100, 5);
+        Field = create_cylinder(100, 5, 0, 25, 200, Field, X, Y, Z);
+        Field = create_pipe(60, 20, 60, 80, 5, Field, X, Y, Z);
+        Field = create_pipe(130, -30, 30, 100, 5, Field, X, Y, Z);
 
     case 2 % 2 objects
-        [Field.Obj(1).Gamma, Field.Obj(1).dGdx, Field.Obj(1).dGdy, Field.Obj(1).dGdz]...
-            = create_cylinder(60, 5, 0, 30, 50);
-        [Field.Obj(2).Gamma, Field.Obj(2).dGdx, Field.Obj(2).dGdy, Field.Obj(2).dGdz]...
-            = create_sphere(120, -10, 0, 50);
+        Field = create_cylinder(60, 5, 0, 30, 50, Field, X, Y, Z);
+        Field = create_sphere(120, -10, 0, 50, Field, X, Y, Z);
 
     case 3 % 3 objects
-        [Field.Obj(1).Gamma, Field.Obj(1).dGdx, Field.Obj(1).dGdy, Field.Obj(1).dGdz]...
-            = create_cylinder(60, 5, 0, 30, 50);
-        [Field.Obj(2).Gamma, Field.Obj(2).dGdx, Field.Obj(2).dGdy, Field.Obj(2).dGdz]...
-            = create_sphere(120, -10, 0, 50);
-        [Field.Obj(3).Gamma, Field.Obj(3).dGdx, Field.Obj(3).dGdy, Field.Obj(3).dGdz]...
-            = create_pipe(168,0,0,25,80);
-
+        Field = create_cylinder(60, 5, 0, 30, 50, Field, X, Y, Z);
+        Field = create_sphere(120, -10, 0, 50, Field, X, Y, Z);
+        Field = create_pipe(168, 0, 0, 25, 80, Field, X, Y, Z);
 
     case 12 % 12 objects
-        [Field.Obj(1).Gamma, Field.Obj(1).dGdx, Field.Obj(1).dGdy, Field.Obj(1).dGdz] = create_cylinder(100, 5, 0, 30, 50);
-        [Field.Obj(2).Gamma, Field.Obj(2).dGdx, Field.Obj(2).dGdy, Field.Obj(2).dGdz] = create_pipe(140, 20, 0, 40,10);
-        [Field.Obj(3).Gamma, Field.Obj(3).dGdx, Field.Obj(3).dGdy, Field.Obj(3).dGdz] = create_pipe(20, 20, 0, 24, 40);
-        [Field.Obj(4).Gamma, Field.Obj(4).dGdx, Field.Obj(4).dGdy, Field.Obj(4).dGdz] = create_pipe(55, -20, 0, 28, 50);
-        [Field.Obj(5).Gamma, Field.Obj(5).dGdx, Field.Obj(5).dGdy, Field.Obj(5).dGdz] = create_sphere(53, -60, 0, 50);
-        [Field.Obj(6).Gamma, Field.Obj(6).dGdx, Field.Obj(6).dGdy, Field.Obj(6).dGdz] = create_pipe(150, -80, 0, 40, 50);
-        [Field.Obj(7).Gamma, Field.Obj(7).dGdx, Field.Obj(7).dGdy, Field.Obj(7).dGdz] = create_cone(100, -35, 0, 50,45);
-        [Field.Obj(8).Gamma, Field.Obj(8).dGdx, Field.Obj(8).dGdy, Field.Obj(8).dGdz] = create_cone(170, 2, 0, 20,50);
-        [Field.Obj(9).Gamma, Field.Obj(9).dGdx, Field.Obj(9).dGdy, Field.Obj(9).dGdz] = create_cone(60, 35, 0, 50,30);
-        [Field.Obj(10).Gamma, Field.Obj(10).dGdx, Field.Obj(10).dGdy, Field.Obj(10).dGdz] = create_cylinder(110, 70, 0, 60, 50);
-        [Field.Obj(11).Gamma, Field.Obj(11).dGdx, Field.Obj(11).dGdy, Field.Obj(11).dGdz] = create_pipe(170, 60, 0, 40, 27);
-        [Field.Obj(12).Gamma, Field.Obj(12).dGdx, Field.Obj(12).dGdy, Field.Obj(12).dGdz] = create_cone(150, -30, 0, 32,45);
+        Field = create_cylinder(100, 5, 0, 30, 50, Field, X, Y, Z);
+        Field = create_pipe(140, 20, 0, 40,10, Field, X, Y, Z);
+        Field = create_pipe(20, 20, 0, 24, 40, Field, X, Y, Z);
+        Field = create_pipe(55, -20, 0, 28, 50, Field, X, Y, Z);
+        Field = create_sphere(53, -60, 0, 50, Field, X, Y, Z);
+        Field = create_pipe(150, -80, 0, 40, 50, Field, X, Y, Z);
+        Field = create_cone(100, -35, 0, 50,45, Field, X, Y, Z);
+        Field = create_cone(170, 2, 0, 20,50, Field, X, Y, Z);
+        Field = create_cone(60, 35, 0, 50,30, Field, X, Y, Z);
+        Field = create_cylinder(110, 70, 0, 60, 50, Field, X, Y, Z);
+        Field = create_pipe(170, 60, 0, 40, 27, Field, X, Y, Z);
+        Field = create_cone(150, -30, 0, 32,45, Field, X, Y, Z);
     case 7 % 7 objects
-        Field.Obj(1).Gamma = create_cone(60,8, 0, 70, 50);
-        Field.Obj(2).Gamma = create_cone(100,-24, 0, 89, 100);
-        Field.Obj(3).Gamma = create_cone(160,40, -4, 100, 30);
-        Field.Obj(4).Gamma = create_cone(100,100, -10, 150, 100);
-        Field.Obj(5).Gamma = create_cone(180,-70, -10, 150, 20);
-        Field.Obj(6).Gamma = create_cone(75,-75, -10, 150, 40);
-        Field.Obj(7).Gamma = create_cylinder(170, -6, 0, 34, 100);
+        Field = create_cone(60,8, 0, 70, 50, Field, X, Y, Z);
+        Field = create_cone(100,-24, 0, 89, 100, Field, X, Y, Z);
+        Field = create_cone(160,40, -4, 100, 30, Field, X, Y, Z);
+        Field = create_cone(100,100, -10, 150, 100, Field, X, Y, Z);
+        Field = create_cone(180,-70, -10, 150, 20, Field, X, Y, Z);
+        Field = create_cone(75,-75, -10, 150, 40, Field, X, Y, Z);
+        Field = create_cylinder(170, -6, 0, 34, 100, Field, X, Y, Z);
     case 69 %pp
-        Field.Obj(1).Gamma = create_cylinder(100, 5, 0, 30, 80);
-        Field.Obj(2).Gamma = create_sphere(100, 30, 0, 40);
-        Field.Obj(3).Gamma = create_sphere(100, -20, 0, 40);
-        Field.Obj(4).Gamma = create_sphere(100, 5, 80, 30);
+        Field = create_cylinder(100, 5, 0, 30, 80, Field, X, Y, Z);
+        Field = create_sphere(100, 30, 0, 40, Field, X, Y, Z);
+        Field = create_sphere(100, -20, 0, 40, Field, X, Y, Z);
+        Field = create_sphere(100, 5, 80, 30, Field, X, Y, Z);
 end
 
-Field.numObj = numObj;
-Field.C = C;
+
 
 colormap pink
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
@@ -109,8 +102,7 @@ title(['IFDS, \rho_0 = ' num2str(double(rho0)) ', \sigma_0 = ' num2str(double(si
     'FontSize',26);
 set(gca,'FontSize', 24)
 
-
-disp(['Number of object: ' num2str(numObj)])
+disp(['Number of object: ' num2str(Field.numObj)])
 if sf == 0 
     disp("Shape-following: Off") 
     subtitle('Shape-following: Off', 'FontSize', 24)
@@ -119,6 +111,7 @@ elseif sf == 1
     subtitle('Shape-following: On', 'FontSize', 24)
 end
 
+toc
 %% Original Fluid
 
 if multiTarget
@@ -162,16 +155,18 @@ for L = 1:numLine
                 yy = Wp(2,j);
                 zz = Wp(3,j);
 
+                ntu =  double(n(xx,yy,zz)'*u(xx,yy,zz));
+       
                 if norm([xx yy zz] - double([xd yd zd])) < targetThresh
                     disp('Target destination reached!')
                     Wp = Wp(:,1:j);
                     break
                 else
-                    if n(xx,yy,zz)'*u(xx,yy,zz) < 0 || sf == 1
+                    if ntu < 0 || sf == 1
             %             disp('case 1 activated')
                         Wp(:,j+1) = Wp(:,j) + double(UBar(Wp(1,j), Wp(2,j), Wp(3,j))) * dt;
             
-                    elseif n(xx,yy,zz)'*u(xx,yy,zz) >= 0 && sf == 0
+                    elseif ntu >= 0 && sf == 0
             %             disp('case 2 activated')
                         Wp(:,j+1) = Wp(:,j) + double(u(Wp(1,j), Wp(2,j), Wp(3,j))) * dt;
                     end  
@@ -203,6 +198,7 @@ for L = 1:numLine
             disp('Target destination reached!')
     end
 
+    toc
     %% Plotting the path
     figure(69)
     
@@ -223,7 +219,6 @@ for L = 1:numLine
 
 end
 
-toc
 
 %% ------------------------------Function---------------------------------
 
@@ -232,9 +227,10 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
     rho0   = Field.Param.rho0;
     sigma0 = Field.Param.sigma0;
     C = Field.C;
-    dist = calc_dist(X, Y, Z, xd, yd, zd);
 
-    u = vpa(calc_u(X, Y, Z, C, xd, yd, zd));
+    dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
+
+    u(X,Y,Z) = vpa(-[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]');
     
     %% Components
     numObj = Field.numObj;
@@ -261,15 +257,12 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
         z0 = Field.Obj(j).origin(3);
     
         % Calculate parameters
-        [rho, sigma, dist_obj] = calc_params(X, Y, Z, x0, y0, z0, rho0, sigma0, dist);
+        [rho, sigma, dist_obj] = calc_params();
     
         % Modular Matrix (Perturbation Matrix
         M = vpa(eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n)));  % tao is removed for now
-    
-        % Interfered Fluid Velocity
-%         ubar = calc_ubar(tsim, sf, n, u, M);
-     
+      
         % Weight
         w = 1;
 %         w = ones(numObj,1);
@@ -295,8 +288,6 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
         Field.Obj(j).sigma = sigma;
         Field.Obj(j).M  = M;
         Field.Obj(j).w = w;
-
-        toc
     
     end
 
@@ -312,102 +303,111 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
 
     UBar = vpa(Mm*u); 
 
-end
+    function [rho, sigma, dist_obj] = calc_params()
+        dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
+        
+        % Reactivity Parameter 
+        rho = rho0 * exp(1 - 1/(dist_obj * dist));
+        sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
+    end
 
-function [rho, sigma, dist_obj] = calc_params(X, Y, Z, x0, y0, z0, rho0, sigma0, dist)
-    dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
-    
-    % Reactivity Parameter 
-    rho = rho0 * exp(1 - 1/(dist_obj * dist));
-    sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
-end
-
-function out = calc_u(X,Y,Z, C, xd, yd, zd)
-    d = calc_dist(X,Y,Z,xd,yd,zd);
-    out(X,Y,Z) = -[C*(X - xd)/d, C*(Y - yd)/d, C*(Z - zd)/d]';
-end
-
-function out = calc_dist(X,Y,Z,xd,yd,zd)
-    out = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 end
 
 
 
 %% ------------------------Object Modeling functions----------------------
-function [Gamma, dGdx, dGdy, dGdz] = create_sphere(x0, y0, z0, D)
-    global numObj Field
-    numObj = numObj + 1;
-    % create_sphere(x0,y0,z0,D)
+function Field = create_sphere(x0, y0, z0, D, Field, X, Y, Z)
+    
+    Field.numObj = Field.numObj + 1;
     
     % Saving object's location
-    Field.Obj(numObj).origin = [x0, y0, z0]; 
+    Field.Obj(Field.numObj).origin = [x0, y0, z0]; 
+
     % Object's origin point
-    x0 = sym(x0);   y0 = sym(y0);   z0 = sym(z0);
+    Field.Obj(Field.numObj).origin = [x0, y0, z0]; 
     
     % Object's axis length
-    a = sym(D/2);   b = sym(D/2);   c = sym(D/2);
+    a = D/2;   b = D/2;   c = D/2;
     
     % Index parameters
-    p = sym(1);   q = sym(1);   r = sym(1);
+    p = 1;   q = 1;   r = 1;
+   
+    % Object Shape Equation
+    Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
+    
+    % Differential
+    [dGdx, dGdy, dGdz] = calc_dG();
 
-    syms X Y Z
-    assume([X Y Z], 'real')
-    % assumptions([X Y Z])
+    % Save to Field
+    Field.Obj(Field.numObj).Gamma = Gamma;
+    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
+    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
+    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    
+    % Plot the surface
+    figure(69);
+    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1)
+    hold on, axis equal;
+    function [dGdx, dGdy, dGdz] = calc_dG()
+        dGdx(X,Y,Z) = (2*p*((X - x0)/a).^(2*p - 1))/a;
+        dGdy(X,Y,Z) = (2*q*((Y - y0)/b).^(2*q - 1))/b;
+        dGdz(X,Y,Z) = (2*r*((Z - z0)/c).^(2*r - 1))/c;
+
+%         dGdx = diff(Gamma,X);
+%         dGdy = diff(Gamma,Y);
+%         dGdz = diff(Gamma,Z);
+    end
+
+end
+
+function Field = create_cylinder(x0, y0, z0, D, h, Field, X, Y, Z)
+    
+    Field.numObj = Field.numObj + 1;
+    
+    % Saving object's location
+    Field.Obj(Field.numObj).origin = [x0, y0, z0]; 
+    
+    % Object's axis length
+    a = D/2;   b = D/2;   c = h;
+    
+    % Index parameters
+    p = 1;   q = 1;   r = 5;
     
     % Object Shape Equation
     Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-    [dGdx, dGdy, dGdz] = calc_dG(X,Y,Z,x0,y0,z0,a,b,c,p,q,r);
-    Object = Gamma == 1;
+    
+    % Differential
+    [dGdx, dGdy, dGdz] = calc_dG();
+
+    % Save to Field
+    Field.Obj(Field.numObj).Gamma = Gamma;
+    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
+    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
+    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    
 
     % Plot the surface
     figure(69);
-
-    fimplicit3(Object,'EdgeColor','none','FaceAlpha',1)
-%     colormap pink
+    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1)
     hold on, axis equal;
+
+    function [dGdx, dGdy, dGdz] = calc_dG()
+        dGdx(X,Y,Z) = (2*p*((X - x0)/a).^(2*p - 1))/a;
+        dGdy(X,Y,Z) = (2*q*((Y - y0)/b).^(2*q - 1))/b;
+        dGdz(X,Y,Z) = (2*r*((Z - z0)/c).^(2*r - 1))/c;
+
+%         dGdx = diff(Gamma,X);
+%         dGdy = diff(Gamma,Y);
+%         dGdz = diff(Gamma,Z);
+    end
 end
 
-function [Gamma, dGdx, dGdy, dGdz] = create_cylinder(x0, y0, z0, D, h)
-    global numObj Field
-    numObj = numObj + 1;
-    % create_sphere(x0,y0,z0,D)
-    
-    % Saving object's location
-    Field.Obj(numObj).origin = [x0, y0, z0]; 
-    % Object's origin point
-    x0 = sym(x0);   y0 = sym(y0);   z0 = sym(z0);
-    
-    % Object's axis length
-    a = sym(D/2);   b = sym(D/2);   c = sym(h);
-    
-    % Index parameters
-    p = sym(1);   q = sym(1);   r = sym(5);
+function Field = create_cone(x0, y0, z0, D, h, Field, X, Y, Z)
 
-    syms X Y Z
-    assume([X Y Z], 'real')
-    
-    % Object Shape Equation
-    Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-    [dGdx, dGdy, dGdz] = calc_dG(X,Y,Z,x0,y0,z0,a,b,c,p,q,r);
-
-    Object = Gamma == 1;
-
-    % Plot the surface
-    figure(69);
-
-    fimplicit3(Object,'EdgeColor','none','FaceAlpha',1)
-%     colormap pink
-    hold on, axis equal;
-end
-
-function [Gamma, dGdx, dGdy, dGdz] = create_cone(x0, y0, z0, D, h)
-    global numObj Field
-    syms X Y Z
-    assume([X Y Z], 'real')
-    numObj = numObj + 1;
+    Field.numObj = Field.numObj + 1;
 
     % Saving object's location
-    Field.Obj(numObj).origin = [x0, y0, z0]; 
+    Field.Obj(Field.numObj).origin = [x0, y0, z0]; 
     
     % Object's axis length
     a = D/2;   b = D/2;   c = h;
@@ -419,60 +419,70 @@ function [Gamma, dGdx, dGdy, dGdz] = create_cone(x0, y0, z0, D, h)
     Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
     
     % Differential
-    [dGdx, dGdy, dGdz] = calc_dG(X,Y,Z,x0,y0,z0,a,b,c,p,q,r);
+    [dGdx, dGdy, dGdz] = calc_dG();
     
-    dGdx = vpa(dGdx);
-    dGdy = vpa(dGdy);
-    dGdz = vpa(dGdz);
-
-    Object = Gamma == 1;
+    % Save to Field
+    Field.Obj(Field.numObj).Gamma = Gamma;
+    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
+    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
+    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
 
     % Plot the surface
     figure(69);
-
-    fimplicit3(Object,'EdgeColor','none','FaceAlpha',1)
+    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1)
     hold on, axis equal;
+
+    function [dGdx, dGdy, dGdz] = calc_dG()
+        dGdx(X,Y,Z) = (2*p*((X - x0)/a).^(2*p - 1))/a;
+        dGdy(X,Y,Z) = (2*q*((Y - y0)/b).^(2*q - 1))/b;
+        dGdz(X,Y,Z) = (2*r*((Z - z0)/c).^(2*r - 1))/c;
+
+%         dGdx = diff(Gamma,X);
+%         dGdy = diff(Gamma,Y);
+%         dGdz = diff(Gamma,Z);
+    end
+
 end
 
 
+function Field = create_pipe(x0, y0, z0, base, h, Field, X, Y, Z)
 
-
-
-function [Gamma, dGdx, dGdy, dGdz] = create_pipe(x0, y0, z0, base, h)
-    global numObj Field
-    numObj = numObj + 1;
-    % create_sphere(x0,y0,z0,D)
+    Field.numObj = Field.numObj + 1;
     
     % Saving object's location
-    Field.Obj(numObj).origin = [x0, y0, z0]; 
-    % Object's origin point
-    x0 = sym(x0);   y0 = sym(y0);   z0 = sym(z0);
-    
+    Field.Obj(Field.numObj).origin = [x0, y0, z0]; 
+
     % Object's axis length
-    a = sym(base/2);   b = sym(base/2);   c = sym(h);
+    a = base/2;   b = base/2;   c = h;
     
     % Index parameters
     p = sym(2);   q = sym(2);   r = sym(2);
 
-    syms X Y Z
-    assume([X Y Z], 'real')
-    
     % Object Shape Equation
     Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-    [dGdx, dGdy, dGdz] = calc_dG(X,Y,Z,x0,y0,z0,a,b,c,p,q,r);
-    Object = Gamma == 1;
 
+    % Differential
+    [dGdx, dGdy, dGdz] = calc_dG();
+    
+    % Save to Field
+    Field.Obj(Field.numObj).Gamma = Gamma;
+    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
+    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
+    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    
     % Plot the surface
     figure(69);
-
-    fimplicit3(Object,'EdgeColor','none','FaceAlpha',1)
-%     fimplicit3(Object,'EdgeColor','none','FaceColor',[0 1 0],'FaceAlpha',.25)
-%     colormap pink
+    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1)
     hold on, axis equal;
+
+    function [dGdx, dGdy, dGdz] = calc_dG()
+        dGdx(X,Y,Z) = (2*p*((X - x0)/a).^(2*p - 1))/a;
+        dGdy(X,Y,Z) = (2*q*((Y - y0)/b).^(2*q - 1))/b;
+        dGdz(X,Y,Z) = (2*r*((Z - z0)/c).^(2*r - 1))/c;
+
+%         dGdx = diff(Gamma,X);
+%         dGdy = diff(Gamma,Y);
+%         dGdz = diff(Gamma,Z);
+    end
 end
 
-function [dGdx, dGdy, dGdz] = calc_dG(X,Y,Z,x0,y0,z0,a,b,c,p,q,r)
-    dGdx(X,Y,Z) = (2*p*((X - x0)/a).^(2*p - 1))/a;
-    dGdy(X,Y,Z) = (2*q*((Y - y0)/b).^(2*q - 1))/b;
-    dGdz(X,Y,Z) = (2*r*((Z - z0)/c).^(2*r - 1))/c;
-end
