@@ -2,7 +2,9 @@
 A path planning algorithm based on Interfered Fluid Dynamical System (IFDS)
 
 # Note
-Work in-progress (Master's Thesis and AIAA submission)
+- Work in-progress (Master's Thesis and AIAA submission)
+- **main_static_symbolic** : Coded with symbolic maths; took very long time to run (3-4 s per obstacle)
+- **main_static** : Coded numerically; very fast (~0.008 s per obstacle)
 
 # Preliminary Results
 
