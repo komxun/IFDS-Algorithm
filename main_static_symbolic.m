@@ -1,6 +1,6 @@
 clc, clear, close all
 tic
-
+% Created by Komsun
 % Initialization
 syms X Y Z 
 % assume([X Y Z], 'real')
@@ -301,7 +301,7 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
         Mm = Mm + vpa(Field.Obj(j).w_tilde * Field.Obj(j).M);
     end
 
-    UBar = vpa(Mm*u); 
+    UBar = (Mm*u) 
 
     function [rho, sigma, dist_obj] = calc_params()
         dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
