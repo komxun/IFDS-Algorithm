@@ -1,5 +1,5 @@
 clc, clear, close all
-
+% Adding Optimization
 
 % Set-up Parameters
 tsim = uint16(400);          % [s] simulation time for the path 
@@ -219,10 +219,6 @@ figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
 view(-43,52)
 for rt = 1:rtsim
-%     Oy = -80 + 2*single(rt);
-
-%     Oy1 = -80 + 2*single(rt);
-%     Oy2 = 80 - 5*single(rt);
     
     if multiTarget
         plot_multi(rt, Paths, Xini, Yini, Zini, destin)
@@ -305,6 +301,10 @@ function plot_single(rt, Paths, Xini, Yini, Zini, destin)
     zlim([0 100])    
 end
 
+
+% function out = distance(w1, w2, rho0, sigma0)
+%     u = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
+% end
 
 function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C)
 
