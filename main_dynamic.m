@@ -4,9 +4,9 @@ clc, clear, close all
 % Set-up Parameters
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
-dt = single(0.1);            % [s] simulation time step
-C  = single(30);             % [m/s] UAV cruising speed
-targetThresh = single(2.5);  % [m] allowed error for final target distance 
+dt = 0.1;            % [s] simulation time step
+C  = 30;             % [m/s] UAV cruising speed
+targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = uint8(2);       % Scenario selection
@@ -14,19 +14,19 @@ scene = uint8(2);       % Scenario selection
                         % 7) non-urban 12) urban environment
 
 % Starting location
-Xini = single(0);
-Yini = single(0);
-Zini = single(0);
+Xini = 0;
+Yini = 0;
+Zini = 0;
 
 % Target Destination
-Xfinal = single(200);
-Yfinal = single(0);
-Zfinal = single(50);
+Xfinal = 200;
+Yfinal = 0;
+Zfinal = 50;
 
 % Tuning Parameters
 sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
-rho0  = single(1.3);        % Repulsive parameter (rho >= 0)
-sigma0 = single(0.01);    % Tangential parameter 
+rho0  = 1.3;        % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;    % Tangential parameter 
 
 %----------- Note -------------
 % Good: rho0 = 2, simga0 = 0.01
@@ -302,9 +302,6 @@ function plot_single(rt, Paths, Xini, Yini, Zini, destin)
 end
 
 
-% function out = distance(w1, w2, rho0, sigma0)
-%     u = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
-% end
 
 function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C)
 
@@ -342,7 +339,65 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C)
         % Modular Matrix (Perturbation Matrix
         M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
-      
+
+
+
+        % -------Objective function (rho00, sigma00)-----------
+        % x = (rho00, sigma00)
+        ubb = @(x) eye(3) - n*n'/(abs(Gamma)^(1/(x(1) * exp(1 - 1/(dist_obj * dist))))*(n')*n)...
+        + t*n'/(abs(Gamma)^(1/(x(2) * exp(1 - 1/(dist_obj * dist))))*norm(t)*norm(n)) * u;
+
+        % ---------Constraints---------------
+        inequalityConstraints = @(x) [-x(1); -x(2)];
+        % ---------Initial Guess-------------
+        x0 = [2, 0.01];   % for (rho0, sigma0)
+
+        % Barrier function
+        barrier = @(x, t) -sum(log(-inequalityConstraints(x)));
+        
+        % Gradient of the barrier function
+        barrierGradient = @(x, t) -sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)));
+        
+        % Hessian of the barrier function
+        barrierHessian = @(x, t) diag(sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)).^2));
+
+        % Parameters
+        t = 1;  % Barrier parameter
+        tolerance = 1e-6;  % Stopping criterion tolerance
+        maxIterations = 100;  % Maximum number of iterations
+        
+        % SQP algorithm
+        x = x0;
+        for iter = 1:maxIterations
+            % Solve the quadratic programming subproblem
+            H = barrierHessian(x, t);
+            g = barrierGradient(x, t);
+%             A = inequalityConstraints(x)'
+%             b = zeros(size(A, 1), 1)
+            A = -eye(length(g));
+            b = zeros(length(g), 1);
+            options = optimoptions('quadprog', 'Display', 'off');
+            delta_x = quadprog(H, g, A, b, [], [], [], [], [], options);
+            
+            % Update the solution
+            x = x + delta_x;
+            
+            % Check the stopping criterion
+            if norm(delta_x) < tolerance
+                break;
+            end
+            
+            % Adjust the barrier parameter
+            t = t / 2;
+        end
+        
+        % Display the final solution and objective value
+%         fprintf('Optimal solution: x = [%f; %f]\n', x(1), x(2));
+%         fprintf('Objective value: %f\n', ubb(x));
+
+
+        rho0 = x(1)
+        sigma0 = x(2)
         % Weight
         w = 1;
         for i = 1:numObj
