@@ -24,7 +24,7 @@ Yfinal = 0;
 Zfinal = 50;
 
 % Tuning Parameters
-sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
+sf    = uint8(1);         % Shape-following demand (1=on, 0=off)
 rho0  = 1.3;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;    % Tangential parameter 
 
@@ -86,7 +86,8 @@ Paths = cell(numLine,rtsim);
 for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
-
+    total_distance = 0;
+    total_dist = 0;
 for L = 1:numLine
 %     disp("Calculating path for destination #" + num2str(L))
     xd = (destin(L,1));
@@ -104,6 +105,12 @@ for L = 1:numLine
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
 
                 [UBar, n, u] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C);
+                
+                
+                d_segment = norm(UBar * dt, 1); 
+%                 d_segment2 = norm(X)
+                total_distance = total_distance + d_segment;
+    
 
                 ntu =  n'*u;
        
@@ -115,11 +122,13 @@ for L = 1:numLine
                 else
                     if ntu < 0 || sf == 1
                         Wp(:,t+1) = Wp(:,t) + UBar * dt;
-            
                     elseif ntu >= 0 && sf == 0
                         Wp(:,t+1) = Wp(:,t) + u * dt;
                     end  
                 end
+
+                diff_segment = Wp(:,t+1) - Wp(:,t);
+                total_dist = total_dist + sqrt(sum(diff_segment.^2));
             end
 
         case 2 % simulate by reaching distance
@@ -342,64 +351,6 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C)
         M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
 
-
-
-        % -------Objective function (rho00, sigma00)-----------
-        % x = (rho00, sigma00)
-        ubb = @(x) eye(3) - n*n'/(abs(Gamma)^(1/(x(1) * exp(1 - 1/(dist_obj * dist))))*(n')*n)...
-        + t*n'/(abs(Gamma)^(1/(x(2) * exp(1 - 1/(dist_obj * dist))))*norm(t)*norm(n)) * u;
-
-        % ---------Constraints---------------
-        inequalityConstraints = @(x) [-x(1); -x(2)];
-        % ---------Initial Guess-------------
-        x0 = [2, 0.01];   % for (rho0, sigma0)
-
-        % Barrier function
-        barrier = @(x, t) -sum(log(-inequalityConstraints(x)));
-        
-        % Gradient of the barrier function
-        barrierGradient = @(x, t) -sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)));
-        
-        % Hessian of the barrier function
-        barrierHessian = @(x, t) diag(sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)).^2));
-
-        % Parameters
-        t = 1;  % Barrier parameter
-        tolerance = 1e-6;  % Stopping criterion tolerance
-        maxIterations = 100;  % Maximum number of iterations
-        
-        % SQP algorithm
-        x = x0;
-        for iter = 1:maxIterations
-            % Solve the quadratic programming subproblem
-            H = barrierHessian(x, t);
-            g = barrierGradient(x, t);
-%             A = inequalityConstraints(x)'
-%             b = zeros(size(A, 1), 1)
-            A = -eye(length(g));
-            b = zeros(length(g), 1);
-            options = optimoptions('quadprog', 'Display', 'off');
-            delta_x = quadprog(H, g, A, b, [], [], [], [], [], options);
-            
-            % Update the solution
-            x = x + delta_x;
-            
-            % Check the stopping criterion
-            if norm(delta_x) < tolerance
-                break;
-            end
-            
-            % Adjust the barrier parameter
-            t = t / 2;
-        end
-        
-        % Display the final solution and objective value
-%         fprintf('Optimal solution: x = [%f; %f]\n', x(1), x(2));
-%         fprintf('Objective value: %f\n', ubb(x));
-
-
-        rho0 = x(1)
-        sigma0 = x(2)
         % Weight
         w = 1;
         for i = 1:numObj

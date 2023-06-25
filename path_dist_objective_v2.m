@@ -1,6 +1,6 @@
-clc, clear, close all
-% Adding Optimization
+function total_dist = path_dist_objective_v2(rho0, sigma0)
 
+showPlot = 1;
 % Set-up Parameters
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
@@ -25,8 +25,6 @@ Zfinal = 50;
 
 % Tuning Parameters
 sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
-rho0  = 1.3;        % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;    % Tangential parameter 
 
 %----------- Note -------------
 % Good: rho0 = 2, simga0 = 0.01
@@ -48,11 +46,10 @@ end
 
 Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'dGdx',0,'dGdy',0,'dGdz',0,'a',0,'b',0,'c',0,'p',0,'q',0,'r',0);
 
-
-disp(['Number of object: ' num2str(size(Object,2))])
-if sf == 0, disp("Shape-following: Off") 
-else, disp("Shape-following: On")
-end
+% disp(['Number of object: ' num2str(size(Object,2))])
+% if sf == 0, disp("Shape-following: Off") 
+% else, disp("Shape-following: On")
+% end
 
 %% Original Fluid
 
@@ -71,22 +68,18 @@ else
 end
 
 numLine = size(destin,1);
-disp("Generating paths for " + num2str(numLine) + " destinations . . .")
-disp("*Timer started*")
-timer = zeros(1,numLine);
+% disp("Generating paths for " + num2str(numLine) + " destinations . . .")
 
 % L = 1;
-
-
 
 % Pre-allocate waypoints and path
 Wp = zeros(3, tsim+1);
 Paths = cell(numLine,rtsim);
 
 for rt = 1:rtsim
-    tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
-
+    total_distance = 0;
+    total_dist = 0;
 for L = 1:numLine
 %     disp("Calculating path for destination #" + num2str(L))
     xd = (destin(L,1));
@@ -104,6 +97,12 @@ for L = 1:numLine
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
 
                 [UBar, n, u] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C);
+                
+                
+                d_segment = norm(UBar * dt, 1); 
+%                 d_segment2 = norm(X)
+                total_distance = total_distance + d_segment;
+    
 
                 ntu =  n'*u;
        
@@ -115,11 +114,13 @@ for L = 1:numLine
                 else
                     if ntu < 0 || sf == 1
                         Wp(:,t+1) = Wp(:,t) + UBar * dt;
-            
                     elseif ntu >= 0 && sf == 0
                         Wp(:,t+1) = Wp(:,t) + u * dt;
                     end  
                 end
+
+                diff_segment = Wp(:,t+1) - Wp(:,t);
+                total_dist = total_dist + sqrt(sum(diff_segment.^2));
             end
 
         case 2 % simulate by reaching distance
@@ -147,50 +148,43 @@ for L = 1:numLine
             disp('Target destination reached!')
     end
 
-    timer(L) = toc;
 end
 
-disp("Average computed time = " + num2str(mean(timer)) + " s")
 % Plotting the path
-figure(70)
-% set(gcf, 'Position', get(0, 'Screensize'));
-plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
-hold on, grid on, grid minor, axis equal
-scatter3(Xini, Yini, Zini, 'filled', 'r')
-scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr')
-if multiTarget
-    plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
-    plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
-    scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'sizedata', 100)
-    scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'sizedata', 100)
-    scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'sizedata', 100)
-    scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'sizedata', 100)
-    scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'sizedata', 100)
-    scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'sizedata', 100)
-    scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'sizedata', 100)
-    scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'sizedata', 100)
+if showPlot
+    figure(70)
+    % set(gcf, 'Position', get(0, 'Screensize'));
+    plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
+    hold on, grid on, grid minor, axis equal
+    scatter3(Xini, Yini, Zini, 'filled', 'r')
+    scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr')
+    if multiTarget
+        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
+        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'sizedata', 100)
+        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'sizedata', 100)
+        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'sizedata', 100)
+        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'sizedata', 100)
+        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'sizedata', 100)
+        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'sizedata', 100)
+        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'sizedata', 100)
+        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'sizedata', 100)
+    end
+    title(num2str(rt,'time = %4.1f s'))
+    xlim([0 200])
+    ylim([-100 100])
+    zlim([0 100])
+    %     pause(0.05)
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    hold off
 end
-title(num2str(rt,'time = %4.1f s'))
-xlim([0 200])
-ylim([-100 100])
-zlim([0 100])
-%     pause(0.05)
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-hold off
     
-%     figure
-%     subplot(3,1,1)
-%     plot(Wp(1,:),'o-')
-%     subplot(3,1,2)
-%     plot(Wp(2,:),'o-')
-%     subplot(3,1,3)
-%     plot(Wp(3,:),'o-')
 end
 
 %% post-Calculation
@@ -207,58 +201,11 @@ squaredDistances = sum(differences.^2, 2);
 totalLength = sum(sqrt(squaredDistances));
 
 % Display the total path length
-fprintf('Total path length: %.2f m\n', totalLength);
-fprintf('Total flight time: %.2f s\n', totalLength/C);
-
-%% ----------------------- Plotting Results -------------------------------
-animation = 1;
+% fprintf('Total path length: %.2f m\n', totalLength);
+% fprintf('Total flight time: %.2f s\n', totalLength/C);
 
 
-syms X Y Z Gamma(X,Y,Z)
-figure(69)
-% set(gcf, 'Position', get(0, 'Screensize'));
-view(-43,52)
-for rt = 1:rtsim
-    
-    if multiTarget
-        plot_multi(rt, Paths, Xini, Yini, Zini, destin)
-    else
-        plot_single(rt, Paths, Xini, Yini, Zini, destin)
-    end
-
-    for j = 1:size(Object,2)
-        x0 = Object(j).origin(rt, 1);
-        y0 = Object(j).origin(rt, 2);
-        z0 = Object(j).origin(rt, 3);
-        a = Object(j).a;
-        b = Object(j).b;
-        c = Object(j).c;
-        p = Object(j).p;
-        q = Object(j).q;
-        r = Object(j).r;
-    
-        Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-%         figure(69)
-        fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-%         colormap pink
-        xlim([0 200])
-        ylim([-100 100])
-        zlim([0 100])
-%         hold on, grid on, grid minor, axis equal
-    end
-    title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf)]);
-    subtitle(num2str(rt,'time = %4.1f s'))
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-    hold off
-    
 end
-
-
-
-% title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
-%     'FontSize',26);
-% subtitle(['SF = ' num2str(sf)], 'FontSize', 24)
-set(gca,'FontSize', 24)
 
 %% ------------------------------Function---------------------------------
 function plot_multi(rt, Paths, Xini, Yini, Zini, destin)
@@ -342,64 +289,6 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C)
         M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
 
-
-
-        % -------Objective function (rho00, sigma00)-----------
-        % x = (rho00, sigma00)
-        ubb = @(x) eye(3) - n*n'/(abs(Gamma)^(1/(x(1) * exp(1 - 1/(dist_obj * dist))))*(n')*n)...
-        + t*n'/(abs(Gamma)^(1/(x(2) * exp(1 - 1/(dist_obj * dist))))*norm(t)*norm(n)) * u;
-
-        % ---------Constraints---------------
-        inequalityConstraints = @(x) [-x(1); -x(2)];
-        % ---------Initial Guess-------------
-        x0 = [2, 0.01];   % for (rho0, sigma0)
-
-        % Barrier function
-        barrier = @(x, t) -sum(log(-inequalityConstraints(x)));
-        
-        % Gradient of the barrier function
-        barrierGradient = @(x, t) -sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)));
-        
-        % Hessian of the barrier function
-        barrierHessian = @(x, t) diag(sum(inequalityConstraints(x) ./ (-inequalityConstraints(x)).^2));
-
-        % Parameters
-        t = 1;  % Barrier parameter
-        tolerance = 1e-6;  % Stopping criterion tolerance
-        maxIterations = 100;  % Maximum number of iterations
-        
-        % SQP algorithm
-        x = x0;
-        for iter = 1:maxIterations
-            % Solve the quadratic programming subproblem
-            H = barrierHessian(x, t);
-            g = barrierGradient(x, t);
-%             A = inequalityConstraints(x)'
-%             b = zeros(size(A, 1), 1)
-            A = -eye(length(g));
-            b = zeros(length(g), 1);
-            options = optimoptions('quadprog', 'Display', 'off');
-            delta_x = quadprog(H, g, A, b, [], [], [], [], [], options);
-            
-            % Update the solution
-            x = x + delta_x;
-            
-            % Check the stopping criterion
-            if norm(delta_x) < tolerance
-                break;
-            end
-            
-            % Adjust the barrier parameter
-            t = t / 2;
-        end
-        
-        % Display the final solution and objective value
-%         fprintf('Optimal solution: x = [%f; %f]\n', x(1), x(2));
-%         fprintf('Objective value: %f\n', ubb(x));
-
-
-        rho0 = x(1)
-        sigma0 = x(2)
         % Weight
         w = 1;
         for i = 1:numObj
