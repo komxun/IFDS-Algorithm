@@ -10,8 +10,10 @@ targetThresh = 2.5;  % [m] allowed error for final target distance
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = uint8(2);       % Scenario selection
-                        % 1) 1 cone, 2) 1 complex object
+                        % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
+
+useOptimizer = 1; % 1:On 0:Off
 
 % Starting location
 Xini = 0;
@@ -25,8 +27,8 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
-rho0  = 1.3;        % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;    % Tangential parameter 
+rho0  = 10;        % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;     % Tangential parameter 
 x_guess = [rho0; sigma0];
 
 %----------- Note -------------
@@ -106,8 +108,15 @@ Paths = cell(numLine,rtsim);
 for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
-    total_distance = 0;
-    total_dist = 0;
+
+    %---------------Path Optimization-----------------
+    if useOptimizer
+        disp("Path optimization: On")
+        [rho0, sigma0] = path_optimizing(Param);
+    else
+        disp("Path optimization: Off")
+    end
+    %------------------------------------------------
 for L = 1:numLine
 %     disp("Calculating path for destination #" + num2str(L))
     xd = (destin(L,1));
@@ -285,7 +294,7 @@ set(gca,'FontSize', 24)
 function [rho0, sigma0] = path_optimizing(Param)
 
     x0 = [Param.rho0_initial; Param.sigma0_initial];
-    lower_bound_rho = 0;
+    lower_bound_rho = 0.05;  % <0.05 issue started to occur
     lower_bound_sigma = 0;
     
     upper_bound_rho = 2;
