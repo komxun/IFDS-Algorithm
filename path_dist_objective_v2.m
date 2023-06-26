@@ -1,30 +1,30 @@
-function total_dist = path_dist_objective_v2(rho0, sigma0)
+function total_dist = path_dist_objective_v2(rho0, sigma0, Param)
 
-showPlot = 1;
+showPlot = 0;
 % Set-up Parameters
-tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 1;                   % [s] (50) time for the whole scenario 
-dt = 0.1;            % [s] simulation time step
-C  = 30;             % [m/s] UAV cruising speed
-targetThresh = 2.5;  % [m] allowed error for final target distance 
-simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(2);       % Scenario selection
+tsim = Param.tsim;          % [s] simulation time for the path 
+rtsim = Param.rtsim;                   % [s] (50) time for the whole scenario 
+dt = Param.dt;            % [s] simulation time step
+C  = Param.C;             % [m/s] UAV cruising speed
+targetThresh = Param.targetThresh;  % [m] allowed error for final target distance 
+simMode = Param.simMode;          % 1: by time, 2: by target distance
+multiTarget = Param.multiTarget;      % 1: multi-target 0: single-target
+scene = Param.scene;       % Scenario selection
                         % 1) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
 % Starting location
-Xini = 0;
-Yini = 0;
-Zini = 0;
+Xini = Param.Xini;
+Yini = Param.Yini;
+Zini = Param.Zini;
 
 % Target Destination
-Xfinal = 200;
-Yfinal = 0;
-Zfinal = 50;
+Xfinal = Param.Xfinal;
+Yfinal = Param.Yfinal;
+Zfinal = Param.Zfinal;
 
 % Tuning Parameters
-sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
+sf    = Param.sf;         % Shape-following demand (1=on, 0=off)
 
 %----------- Note -------------
 % Good: rho0 = 2, simga0 = 0.01
