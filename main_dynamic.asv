@@ -21,7 +21,7 @@ Zini = 0;
 % Target Destination
 Xfinal = 200;
 Yfinal = 0;
-Zfinal = 50;
+Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
@@ -31,7 +31,7 @@ x_guess = [rho0; sigma0];
 
 %----------- Note -------------
 % Good: rho0 = 2, simga0 = 0.01
-% Algorihtm stills doesnt work for overlapped objects
+% The algorihtm still doesnt work for overlapped objects
 %------------------------------
 
 % Save to table Param
@@ -99,8 +99,6 @@ timer = zeros(1,numLine);
 
 % L = 1;
 
-
-
 % Pre-allocate waypoints and path
 Wp = zeros(3, tsim+1);
 Paths = cell(numLine,rtsim);
@@ -130,7 +128,7 @@ for L = 1:numLine
 %                 [rho0, sigma0] = path_optimizing(Param)
 
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
-                UBar = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C, sf);
+                UBar = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C, Param);
                 
            
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
@@ -311,13 +309,15 @@ function [rho0, sigma0] = path_optimizing(Param)
     
     % Call fmincon
     [xOpt, fval, exitflag, output] = fmincon(problem);
+    disp(output)
     rho0 = xOpt(1);
     sigma0 = xOpt(2);
 end
 
 
-function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, sf)
+function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
 
+    sf = Param.sf;
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
     u = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
@@ -344,6 +344,7 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, sf)
     
         % Calculate parameters
         % ---- Can also optimize the rho0, sigma0 here for each object
+        [rho0, sigma0] = path_optimizing(Param);
         dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
         rho = rho0 * exp(1 - 1/(dist_obj * dist));
         sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
