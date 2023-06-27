@@ -315,7 +315,6 @@ function [rho0, sigma0] = path_optimizing(Param)
         'Algorithm', 'interior-point', ...   % option2: sqp
         'Display', 'off');
     
-    
     % Call fmincon
     [xOpt, fval, exitflag, output] = fmincon(problem);
     disp(output)
