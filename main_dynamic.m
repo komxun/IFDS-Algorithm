@@ -377,7 +377,7 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
 
         
         % ---- optimize the rho0, sigma0 here for each object
-        [rho0, sigma0] = path_opt2(dist_obj)
+        [~, sigma0] = path_opt2(dist_obj)
         % ---------------------------------------------------
 
         % Calculate parameters
@@ -445,7 +445,7 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
         sigma0 = (log(abs(Gamma))*exp(1/(dist*dist_obj) - 1))/log(-(c3^2*c7^2 + 2*c3*c5*c7*nn*tt + c5^2*nn^2*tt^2 ...
             - 4*c1*c6*c7*nn^2*tt^2)/(2*c1*nn^2*tt^2*(c3*c7 + c5*nn*tt - c2*c7*nn*tt - c4*c7*nn*tt)));
 
-        rho0 = real(rho0);
+%         rho0 = real(rho0);
         sigma0 = real(sigma0);
     end
 end
