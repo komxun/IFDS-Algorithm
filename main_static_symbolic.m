@@ -230,7 +230,7 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
 
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
-    u(X,Y,Z) = vpa(-[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]');
+    u(X,Y,Z) = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
     
     %% Components
     numObj = Field.numObj;
@@ -256,11 +256,12 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
         y0 = Field.Obj(j).origin(2);
         z0 = Field.Obj(j).origin(3);
     
+        
         % Calculate parameters
         [rho, sigma, dist_obj] = calc_params();
     
         % Modular Matrix (Perturbation Matrix
-        M = vpa(eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
+        M = (eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n)));  % tao is removed for now
       
         % Weight
@@ -298,7 +299,7 @@ function [UBar, n, u]  = calc_ubar(X, Y, Z, xd, yd, zd, Field)
 %     Mm = sum(Field.Obj.w_tilde .* Field.Obj.M);
     for j = 1:numObj
         Field.Obj(j).w_tilde = Field.Obj(j).w/sum_w;
-        Mm = Mm + vpa(Field.Obj(j).w_tilde * Field.Obj(j).M);
+        Mm = Mm + Field.Obj(j).w_tilde * Field.Obj(j).M;
     end
 
     UBar = (Mm*u) 
@@ -340,9 +341,9 @@ function Field = create_sphere(x0, y0, z0, D, Field, X, Y, Z)
 
     % Save to Field
     Field.Obj(Field.numObj).Gamma = Gamma;
-    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
-    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
-    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    Field.Obj(Field.numObj).dGdx = dGdx;
+    Field.Obj(Field.numObj).dGdy = dGdy;
+    Field.Obj(Field.numObj).dGdz = dGdz;
     
     % Plot the surface
     figure(69);
@@ -381,9 +382,9 @@ function Field = create_cylinder(x0, y0, z0, D, h, Field, X, Y, Z)
 
     % Save to Field
     Field.Obj(Field.numObj).Gamma = Gamma;
-    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
-    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
-    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    Field.Obj(Field.numObj).dGdx = dGdx;
+    Field.Obj(Field.numObj).dGdy = dGdy;
+    Field.Obj(Field.numObj).dGdz = dGdz;
     
 
     % Plot the surface
@@ -423,9 +424,9 @@ function Field = create_cone(x0, y0, z0, D, h, Field, X, Y, Z)
     
     % Save to Field
     Field.Obj(Field.numObj).Gamma = Gamma;
-    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
-    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
-    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    Field.Obj(Field.numObj).dGdx = dGdx;
+    Field.Obj(Field.numObj).dGdy = dGdy;
+    Field.Obj(Field.numObj).dGdz = dGdz;
 
     % Plot the surface
     figure(69);
@@ -466,9 +467,9 @@ function Field = create_pipe(x0, y0, z0, base, h, Field, X, Y, Z)
     
     % Save to Field
     Field.Obj(Field.numObj).Gamma = Gamma;
-    Field.Obj(Field.numObj).dGdx = vpa(dGdx);
-    Field.Obj(Field.numObj).dGdy = vpa(dGdy);
-    Field.Obj(Field.numObj).dGdz = vpa(dGdz);
+    Field.Obj(Field.numObj).dGdx = dGdx;
+    Field.Obj(Field.numObj).dGdy = dGdy;
+    Field.Obj(Field.numObj).dGdz = dGdz;
     
     % Plot the surface
     figure(69);
