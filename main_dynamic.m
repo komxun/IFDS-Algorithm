@@ -13,7 +13,7 @@ scene = uint8(2);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
-useOptimizer = 0; % 1:On 0:Off
+useOptimizer = 2; % 0:Off  1:Global optimized  2: Local optimized
 
 % Starting location
 Xini = 0;
@@ -110,11 +110,14 @@ for rt = 1:rtsim
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
 
     %---------------Path Optimization-----------------
-    if useOptimizer
-        disp("Path optimization: On")
-        [rho0, sigma0] = path_optimizing(Param);
-    else
-        disp("Path optimization: Off")
+    switch useOptimizer
+        case 0
+            disp("Path optimization: Off")
+        case 1
+           disp("Path optimization: Global");
+           [rho0, sigma0] = path_optimizing(Param);
+        case 2
+            disp("Path optimization: Local")
     end
     %------------------------------------------------
 for L = 1:numLine
@@ -137,9 +140,8 @@ for L = 1:numLine
 %                 [rho0, sigma0] = path_optimizing(Param)
 
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
-                UBar = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C, Param);
+                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C, Param, useOptimizer, t);
                 
-           
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
@@ -293,60 +295,38 @@ set(gca,'FontSize', 24)
 
 function [rho0, sigma0] = path_optimizing(Param)
 
-    optMode = 1;
-    x0 = [Param.rho0_initial; Param.sigma0_initial];
-    switch optMode
-        case 1
-            lower_bound_rho = 0.05;  % <0.05 issue started to occur
-            lower_bound_sigma = 0;
-            
-            upper_bound_rho = 2;
-            upper_bound_sigma = 1;
-            
-            % Set up the optimization problem
-            problem.objective = @(x) path_dist_objective_v2(x(1), x(2), Param);
-            problem.x0 = x0;
-            problem.Aineq = [];
-            problem.bineq = [];
-            problem.Aeq = [];
-            problem.beq = [];
-            problem.lb = [lower_bound_rho; lower_bound_sigma];
-            problem.ub = [upper_bound_rho; upper_bound_sigma];
-            problem.nonlcon = [];
-            problem.solver = 'fmincon';  % specify the solver
-            problem.options = optimoptions('fmincon', ...
-                'Algorithm', 'interior-point', ...   % option2: sqp
-                'Display', 'off');
-            
-            % Call fmincon
-            [xOpt, fval, exitflag, output] = fmincon(problem);
-            disp(output)
-            rho0 = xOpt(1);
-            sigma0 = xOpt(2);
-        case 2
-            c1 = u'*(n)*n'*u;
-            c2 = u'*(t)*n'*u;
-            c3 = u'*(n)*n'*t*n'*u;
-            c4 = u'*(n)*t'*u;
-            c5 = u'*(n)*t'*(n)*n'*u;
-            c6 = u'*(n)*t'*t*n'*u;
-            c7 = n'*n;
+    xg = [Param.rho0_initial; Param.sigma0_initial];
 
-            nn = norm(n);
-            tt = norm(t);
-
-            rho0 = (log(abs(Gamma))*exp(1/(d*d0) - 1))/log((c3^2*c7^2 + 2*c3*c5*c7*nn*tt ...
-                + c5^2*nn^2*tt^2 - 4*c1*c6*c7*nn^2*tt^2)/(c7*nn*tt*(c2*c3*c7 + c3*c4*c7 ...
-                - 4*c1*c6*nn*tt + c2*c5*nn*tt + c4*c5*nn*tt)));
-
-            sigma0 = (log(abs(Gamma))*exp(1/(d*d0) - 1))/log(-(c3^2*c7^2 + 2*c3*c5*c7*nn*tt + c5^2*nn^2*tt^2 ...
-                - 4*c1*c6*c7*nn^2*tt^2)/(2*c1*nn^2*tt^2*(c3*c7 + c5*nn*tt - c2*c7*nn*tt - c4*c7*nn*tt)));
- 
-    end
+    lower_bound_rho = 0.05;  % <0.05 issue started to occur
+    lower_bound_sigma = 0;
+    
+    upper_bound_rho = 2;
+    upper_bound_sigma = 1;
+    
+    % Set up the optimization problem
+    problem.objective = @(x) path_dist_objective_v2(x(1), x(2), Param);
+    problem.x0 = xg;
+    problem.Aineq = [];
+    problem.bineq = [];
+    problem.Aeq = [];
+    problem.beq = [];
+    problem.lb = [lower_bound_rho; lower_bound_sigma];
+    problem.ub = [upper_bound_rho; upper_bound_sigma];
+    problem.nonlcon = [];
+    problem.solver = 'fmincon';  % specify the solver
+    problem.options = optimoptions('fmincon', ...
+        'Algorithm', 'interior-point', ...   % option2: sqp
+        'Display', 'off');
+    
+    % Call fmincon
+    [xOpt, fval, exitflag, output] = fmincon(problem);
+    disp(output)
+    rho0 = xOpt(1);
+    sigma0 = xOpt(2);
 end
 
 
-function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
+function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param, useOptimizer, time)
 
     sf = Param.sf;
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
@@ -355,6 +335,7 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
     
     %% Components
     numObj = size(Obj,2);
+    
 
     Mm = zeros(3);
     sum_w = 0;
@@ -376,17 +357,20 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
         dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
 
         
-        % ---- optimize the rho0, sigma0 here for each object
-        [~, sigma0] = path_opt2(dist_obj)
-        % ---------------------------------------------------
-
-        % Calculate parameters
-        rho = rho0 * exp(1 - 1/(dist_obj * dist));
-        sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
-    
+      
         % Modular Matrix (Perturbation Matrix
         ntu = n' * u;
         if ntu < 0 || sf == 1
+            % ---- optimize the rho0, sigma0 for each object
+            if useOptimizer == 2
+                if mod(time,5)==0 % optimize every 5 waypoints
+                    [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0);
+                end
+            end
+            % ---------------------------------------------------
+            rho = rho0 * exp(1 - 1/(dist_obj * dist));
+            sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
+
             M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
             + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
         elseif ntu >= 0 && sf == 0
@@ -411,8 +395,8 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
         Obj(j).n = n;
         Obj(j).t = t;
         Obj(j).dist = dist_obj;
-        Obj(j).rho = rho;
-        Obj(j).sigma = sigma;
+%         Obj(j).rho = rho;
+%         Obj(j).sigma = sigma;
         Obj(j).M  = M;
         Obj(j).w = w;
     
@@ -425,29 +409,39 @@ function UBar  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param)
 
     UBar = Mm*u; 
 
-    function [rho0, sigma0] = path_opt2(dist_obj)
+    function [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0)
     
-        c1 = u'*(n)*n'*u;
-        c2 = u'*(t)*n'*u;   
-        c3 = u'*(n)*n'*t*n'*u;
-        c4 = u'*(n)*t'*u;
-        c5 = u'*(n)*t'*(n)*n'*u;
-        c6 = u'*(n)*(t)'*t*n'*u;
-        c7 = n'*n;
-        
-        nn = norm(n);
-        tt = norm(t);
-        
-        rho0 = (log(abs(Gamma))*exp(1/(dist*dist_obj) - 1))/log((c3^2*c7^2 + 2*c3*c5*c7*nn*tt ...
-            + c5^2*nn^2*tt^2 - 4*c1*c6*c7*nn^2*tt^2)/(c7*nn*tt*(c2*c3*c7 + c3*c4*c7 ...
-            - 4*c1*c6*nn*tt + c2*c5*nn*tt + c4*c5*nn*tt)));
-        
-        sigma0 = (log(abs(Gamma))*exp(1/(dist*dist_obj) - 1))/log(-(c3^2*c7^2 + 2*c3*c5*c7*nn*tt + c5^2*nn^2*tt^2 ...
-            - 4*c1*c6*c7*nn^2*tt^2)/(2*c1*nn^2*tt^2*(c3*c7 + c5*nn*tt - c2*c7*nn*tt - c4*c7*nn*tt)));
+        xg = [rho0; sigma0];
 
-%         rho0 = real(rho0);
-        sigma0 = real(sigma0);
+        lower_bound_rho = 0.05;  % <0.05 issue started to occur
+        lower_bound_sigma = 0;
+        
+        upper_bound_rho = 2;
+        upper_bound_sigma = 1;
+        
+        % Set up the optimization problem
+        problem.objective = @(x) norm_ubar(x(1), x(2), Gamma, n, t, u, dist, dist_obj);
+        problem.x0 = xg;
+        problem.Aineq = [];
+        problem.bineq = [];
+        problem.Aeq = [];
+        problem.beq = [];
+        problem.lb = [lower_bound_rho; lower_bound_sigma];
+        problem.ub = [upper_bound_rho; upper_bound_sigma];
+        problem.nonlcon = [];
+        problem.solver = 'fmincon';  % specify the solver
+        problem.options = optimoptions('fmincon', ...
+            'Algorithm', 'interior-point', ...   % option2: sqp
+            'Display', 'off');
+        
+        % Call fmincon
+        [xOpt, fval, exitflag, output] = fmincon(problem);
+%         disp(output)
+        rho0 = xOpt(1);
+        sigma0 = xOpt(2);
+
     end
+
 end
 
 function Obj = create_scene(num, Obj, X, Y, Z, rt)
