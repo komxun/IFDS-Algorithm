@@ -27,7 +27,7 @@ Yfinal = 0;
 Zfinal = 10;
 
 % Tuning Parameters
-sf = uint8(1);   % Shape-following demand (1=on, 0=off)
+sf = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0 = 2;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;    % Tangential parameter 
 

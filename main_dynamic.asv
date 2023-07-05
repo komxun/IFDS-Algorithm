@@ -368,13 +368,23 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
                 end
             end
             % ---------------------------------------------------
+            % Adding minimum distance from the object's surface constratint
+            g = 5;
+            gm = abs(Gamma)
             
+%             rho0s = abs(-log(abs(Gamma)) / (log(1-g/(ntu)) * exp(1-1/(dist_obj*dist)) ))
+
             %----------------------------------------------------
-            rho = rho0 * exp(1 - 1/(dist_obj * dist));
+            rho = rho0 * exp(1 - 1/(dist_obj * dist))
             sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
 
-            M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
-            + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
+            gmp = abs(Gamma)^(1/rho)
+
+%             M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
+%             + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
+
+%             M = eye(3) - n*n'/(abs(Gamma)*(n')*n)...
+%                         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
         elseif ntu >= 0 && sf == 0
             M = eye(3);
         end  
@@ -449,8 +459,7 @@ end
 function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
         case 0  % Single object
-%             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-            Obj(1) = create_cylinder(100, 0, 0, 10, 100, Obj(1));
+            Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
             
         case 1 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
@@ -593,9 +602,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         Obj.Gamma = Gamma;
         Obj.n = n;
         Obj.t = t;
-        Obj.a = a;
-        Obj.b = b;
-        Obj.c = c;
+        Obj.a = 2*a;
+        Obj.b = 2*b;
+        Obj.c = 2*c;
         Obj.p = p;
         Obj.q = q;
         Obj.r = r;
