@@ -26,9 +26,14 @@ Yfinal = 0;
 Zfinal = 10;
 
 % Tuning Parameters
-sf    = uint8(0);         % Shape-following demand (1=on, 0=off)
-rho0  = 10;        % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;     % Tangential parameter 
+sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
+rho0  = 0.5;        % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
+Rg = 10;            % [m]  minimum allowed gap distance
+
+
+
+
 x_guess = [rho0; sigma0];
 
 %----------- Note -------------
@@ -47,6 +52,7 @@ Param.simMode = simMode;
 Param.multiTarget = multiTarget;
 Param.scene = scene;
 Param.sf = sf;
+Param.Rg = Rg;
 Param.rho0_initial = rho0;
 Param.sigma0_initial = sigma0;
 Param.Xini = Xini;
@@ -55,6 +61,7 @@ Param.Zini = Zini;
 Param.Xfinal = Xfinal;
 Param.Yfinal = Yfinal;
 Param.Zfinal = Zfinal;
+Param.useOptimizer = useOptimizer;
 
 % Structure Pre-allocation
 switch scene
@@ -69,7 +76,8 @@ switch scene
     case 69, numObj = 4;
 end
 
-Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],'a',0,'b',0,'c',0,'p',0,'q',0,'r',0);
+Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
+    'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0);
 
 
 disp(['Number of object: ' num2str(size(Object,2))])
@@ -140,7 +148,7 @@ for L = 1:numLine
 %                 [rho0, sigma0] = path_optimizing(Param)
 
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
-                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, C, Param, useOptimizer, t);
+                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, Param, t);
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -244,8 +252,7 @@ fprintf('Total flight time: %.2f s\n', totalLength/C);
 %% ----------------------- Plotting Results -------------------------------
 animation = 1;
 
-
-syms X Y Z Gamma(X,Y,Z)
+syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z)
 figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
 view(-43,52)
@@ -267,14 +274,19 @@ for rt = 1:rtsim
         p = Object(j).p;
         q = Object(j).q;
         r = Object(j).r;
+
+        Rstar = Object(j).Rstar;
     
         Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
+        Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
 %         figure(69)
-        fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-%         colormap pink
+        fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
+        colormap pink
+        fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0.2,'MeshDensity',30)
         xlim([0 200])
         ylim([-100 100])
         zlim([0 100])
+        camlight
 %         hold on, grid on, grid minor, axis equal
     end
     title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf)]);
@@ -283,7 +295,6 @@ for rt = 1:rtsim
     hold off
     
 end
-
 
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
@@ -326,8 +337,15 @@ function [rho0, sigma0] = path_optimizing(Param)
 end
 
 
-function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, C, Param, useOptimizer, time)
+function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, Param, time)
 
+    
+%     rho0 = Param.rho0_initial;
+%     sigma0 = Param.sigma0_initial;
+
+    useOptimizer = Param.useOptimizer;
+    Rg = Param.Rg;
+    C = Param.C;
     sf = Param.sf;
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
@@ -368,23 +386,16 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
                 end
             end
             % ---------------------------------------------------
-            % Adding minimum distance from the object's surface constratint
-            g = 5;
-            gm = abs(Gamma)
-            
-%             rho0s = abs(-log(abs(Gamma)) / (log(1-g/(ntu)) * exp(1-1/(dist_obj*dist)) ))
-
+            % Add Gap Constraint
+            Rstar = Obj(j).Rstar;
+            rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + Rg)/Rstar)^2 + 1))) * rho0; 
             %----------------------------------------------------
-            rho = rho0 * exp(1 - 1/(dist_obj * dist))
+%             rho = rho0 * exp(1 - 1/(dist_obj * dist));
+            rho_star = rho0_star * exp(1 - 1/(dist_obj * dist));
             sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
 
-            gmp = abs(Gamma)^(1/rho)
-
-%             M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
-%             + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
-
-%             M = eye(3) - n*n'/(abs(Gamma)*(n')*n)...
-%                         + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
+            M = eye(3) - n*n'/(abs(Gamma)^(1/rho_star)*(n')*n)...
+            + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
         elseif ntu >= 0 && sf == 0
             M = eye(3);
         end  
@@ -459,7 +470,9 @@ end
 function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
         case 0  % Single object
-            Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
+%             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
+%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+            Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
             
         case 1 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
@@ -542,6 +555,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         Obj.p = p;
         Obj.q = q;
         Obj.r = r;
+        Obj.Rstar = max([a,b,c]);
         function [dGdx, dGdy, dGdz] = calc_dG()
             dGdx = (2*p*((X - x0)/a).^(2*p - 1))/a;
             dGdy = (2*q*((Y - y0)/b).^(2*q - 1))/b;
@@ -575,6 +589,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         Obj.p = p;
         Obj.q = q;
         Obj.r = r;
+        Obj.Rstar = min([a,b,c]);
         function [dGdx, dGdy, dGdz] = calc_dG()
             dGdx = (2*p*((X - x0)/a).^(2*p - 1))/a;
             dGdy = (2*q*((Y - y0)/b).^(2*q - 1))/b;
@@ -602,12 +617,13 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         Obj.Gamma = Gamma;
         Obj.n = n;
         Obj.t = t;
-        Obj.a = 2*a;
-        Obj.b = 2*b;
-        Obj.c = 2*c;
+        Obj.a = a;
+        Obj.b = b;
+        Obj.c = c;
         Obj.p = p;
         Obj.q = q;
         Obj.r = r;
+        Obj.Rstar = max([a,b,c]);
         function [dGdx, dGdy, dGdz] = calc_dG()
             dGdx = (2*p*((X - x0)/a).^(2*p - 1))/a;
             dGdy = (2*q*((Y - y0)/b).^(2*q - 1))/b;
@@ -641,6 +657,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         Obj.p = p;
         Obj.q = q;
         Obj.r = r; 
+        Obj.Rstar = max([a,b,c]);
         function [dGdx, dGdy, dGdz] = calc_dG()
             dGdx = (2*p*((X - x0)/a).^(2*p - 1))/a;
             dGdy = (2*q*((Y - y0)/b).^(2*q - 1))/b;
@@ -689,4 +706,3 @@ function plot_single(rt, Paths, Xini, Yini, Zini, destin)
     ylim([-100 100])
     zlim([0 100])    
 end
-
