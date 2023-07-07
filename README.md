@@ -1,5 +1,5 @@
 # This version
-- [x] Added local and global optimization feature (Interim or SQP) - Enabled by `useOptimizer` variable. The optimization algorithm is done by `fmincon` built-in function
+- [x] Added local and global optimization feature (Interim or SQP) - Enabled by `useOptimizer` variable. The optimization algorithm is done by `fmincon` built-in function. The global optimization cost function is the total path length. The local optimization cost function is $\bar{U}^T \bar{U}$
 - [x] Safeguard function for rho0 - Input the minimum allowed gap distance `Rg`. The Safeguard is happening inside the `calc_ubar` function where `rho0_star` is introduced
 - [x] Improved program structure (added `Param` table containing all important parameters) 
 
