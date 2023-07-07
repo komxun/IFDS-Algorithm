@@ -11,3 +11,16 @@
 - [ ] Path following and UAV dynamics not introduced
 - [ ] Evaluation method not considered
 
+# Some results
+## Safeguard
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/c02434b7-347a-4f47-9fc3-f902a708bdda)
+
+
+# Problem Noticed
+- Problem1: The effect of overlapped object ruined the path planning result
+- Problem2: The Barrier of the cylinder, cone, and parallel piped are not uniformly enclosed -> This is because of how the safeguard function is derived from sphere
+
+# Possible Solutions
+- Problem1: Follow the literature to solve the overlapped problem
+- Problem2: Derive the barrier for the cylinder case, or even for the general case
+
