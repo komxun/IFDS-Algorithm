@@ -8,17 +8,21 @@ Sy = 2; % [m]
 Nx = 200;
 Ny = round(Nx*Sy/Sx);
 
-% Generate Random Function
+% Pre-allocate Weather matrix
+tmax = 100;
+weatherMat = zeros(Nx, Ny, tmax);
+
+numSeed = 321;
 
 
 figure(88)
 axis equal tight
 colormap turbo
 
-for t = 1:50
-    f = 0.02;   % control the randomness  
+for t = 1:tmax
+    f = 0.015;   % control the randomness  
             % higher = faster randomness (higher noise frequency)
-    rand('seed',0)
+    rand('seed', numSeed)
     % 0.999 to make sure f is less than 1
     nx1 = 1 + floor(0.999*f*Nx);
     nx2 = Nx - nx1 + 1;
@@ -31,6 +35,7 @@ for t = 1:50
     F(:, ny1:ny2 - 0.5*cos(t/2)) = 0;
     
     F = real(ifft2(F));  % 2D iFFT
+    F = F*1.6;
     
     % Function Axes
     dx = Sx/Nx;
@@ -42,17 +47,21 @@ for t = 1:50
     % imagesc(xa,ya,F.')
     
 %     colorbar
-    imagesc(F)
+    imagesc(F), hold on 
     title(num2str(t,'time = %4.1f s'))
     set(gca, 'YDir', 'normal')
     colorbar
-    pause(0.1)
+    pause(0.01)
+    hold off
+
+    weatherMat(:,:,t) = F;
     
-    
+
 end
 
-
-
-
 set(gca, 'YDir', 'normal')
+fileName = "WeatherMat_" + num2str(numSeed) +".mat";
+save(fileName, 'weatherMat')
+
+
 

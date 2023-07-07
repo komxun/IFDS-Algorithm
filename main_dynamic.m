@@ -1,17 +1,19 @@
 clc, clear, close all
-% Adding Optimization
+% Load data
+% load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
+load WeatherMat_321.mat
 
 % Set-up Parameters
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 1;                   % [s] (50) time for the whole scenario 
+rtsim = 1;                   % [s] (max 100) time for the whole scenario 
 dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(12);       % Scenario selection
-                        % 0) 1 cone, 2) 1 complex object
-                        % 7) non-urban 12) urban environment
+scene = uint8(0);       % Scenario selection
+                         % 0) 1 cone, 2) 1 complex object
+                         % 7) non-urban 12) urban environment
 
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 
@@ -29,10 +31,7 @@ Zfinal = 10;
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 0;            % [m]  minimum allowed gap distance
-
-
-
+Rg = 5;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -79,12 +78,10 @@ end
 Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
     'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0);
 
-
 disp(['Number of object: ' num2str(size(Object,2))])
 if sf == 0, disp("Shape-following: Off") 
 else, disp("Shape-following: On")
 end
-
 
 %% Original Fluid
 
@@ -106,8 +103,6 @@ numLine = size(destin,1);
 disp("Generating paths for " + num2str(numLine) + " destinations . . .")
 disp("*Timer started*")
 timer = zeros(1,numLine);
-
-% L = 1;
 
 % Pre-allocate waypoints and path
 Wp = zeros(3, tsim+1);
@@ -142,7 +137,17 @@ for L = 1:numLine
                 yy = Wp(2,t);
                 zz = Wp(3,t);
                 
+                % --------------- Weather constraints ------------
+                omega = weatherMat(min(round(xx)+1,200),min(round(yy)+100+1,200),rt);   
+                
+                
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
+
+                %----------Modified Gamma considering Weather--------
+                Object.Gamma = 1+ Object.Gamma - exp(omega * log(Object.Gamma));
+                GAMMA_prime = Object.Gamma
+                %----------------------------------------------------
+
                 [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, Param, t);
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
@@ -185,11 +190,12 @@ for L = 1:numLine
 end
 
 disp("Average computed time = " + num2str(mean(timer)) + " s")
+
 % Plotting the path
 figure(70)
 % set(gcf, 'Position', get(0, 'Screensize'));
 plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
-hold on, grid on, grid minor, axis equal
+hold on, grid on, grid minor, axis equal tight
 scatter3(Xini, Yini, Zini, 'filled', 'r')
 scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr')
 if multiTarget
@@ -210,6 +216,9 @@ if multiTarget
     scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'sizedata', 100)
     scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'sizedata', 100)
 end
+imagesc(0:200, -100:100, weatherMat(:,:,rt))
+colormap turbo
+colorbar
 title(num2str(rt,'time = %4.1f s'))
 xlim([0 200])
 ylim([-100 100])
@@ -283,9 +292,12 @@ for rt = 1:rtsim
         zlim([0 100])
 %         hold on, grid on, grid minor, axis equal
     end
+    
+    imagesc(0:200, -100:100, weatherMat(:,:,rt))
     title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf)]);
     subtitle(num2str(rt,'time = %4.1f s'))
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+  
     hold off
     
 end
@@ -464,8 +476,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
         case 0  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
+            Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
+%             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
             
         case 1 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
