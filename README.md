@@ -9,4 +9,5 @@
 - [ ] Overlapped shape problem not fixed
 - [ ] Stagnation problem not fixed (e.g. when path is orthogonal to cylinder surface)
 - [ ] Path following and UAV dynamics not introduced
+- [ ] Evaluation method not considered
 
