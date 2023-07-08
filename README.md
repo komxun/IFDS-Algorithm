@@ -1,9 +1,6 @@
 # This version
 - [x] Restructure the code - separate `main_dynamic.m` and `IFDS.m` for easy development.
 - [x] Simplify plot function into `PlotPath()`
-- [x] Added local and global optimization feature (Interim or SQP) - Enabled by `useOptimizer` variable. The optimization algorithm is done by `fmincon` built-in function. The global optimization cost function is the total path length. The local optimization cost function is $\bar{U}^T \bar{U}$
-- [x] Safeguard function for rho0 - Input the minimum allowed gap distance `Rg`. The Safeguard is happening inside the `calc_ubar` function where `rho0_star` is introduced
-- [x] Improved program structure (added `Param` table containing all important parameters) 
 
 # Not finished
 - [ ] Constraints matrix not introduced (e.g. Weather data)
