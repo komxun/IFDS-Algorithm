@@ -1,6 +1,6 @@
 # This version
 - [x] Restructure the code - separate `main_dynamic.m` and `IFDS.m` for easy development.
-- [x] Simplify plot function into `PlotPath()`
+- [x] Simplify all plot functions into `PlotPath()`
 
 # Not finished
 - [ ] Constraints matrix not introduced (e.g. Weather data)
@@ -13,7 +13,7 @@
 # Problem Noticed
 - **Problem1**: The effect of overlapped object ruined the path planning result
 - **Problem2**: The Barrier of the cylinder, cone, and parallel piped are not uniformly enclosed -> This is because of how the safeguard function is derived from sphere
-- **Problem3**: After restructuring the code, the Global Optimizer ran a lot slower (but maybe more accurate than `verion2` since the objective function considers the SafeGuard and identical to the IFDS algorithm called in the main file)
+- **Problem3**: After restructuring the code, the Global Optimizer ran a lot slower (but maybe more accurate than `verion2_legacy` since the objective function considers the SafeGuard and identical to the IFDS algorithm called in the main file)
 
 # Possible Solutions
 - **Problem1**: Follow the literature to solve the overlapped problem
