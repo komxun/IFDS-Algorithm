@@ -9,6 +9,8 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
     dt = Param.dt;
     C = Param.C;
     showDisp = Param.showDisp;
+    useOptimizer = Param.useOptimizer;
+    Rg = Param.Rg;
 
     % Initialization
     xd = loc_final(1);
@@ -24,7 +26,8 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 zz = Wp(3,t);
                 
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
-                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, Object, rho0, sigma0, Param, t);
+                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                    Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -78,15 +81,8 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
 
 end
 
-function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, Param, time)
+function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, Rg, C, sf, time)
 
-%     rho0 = Param.rho0_initial;
-%     sigma0 = Param.sigma0_initial;
-
-    useOptimizer = Param.useOptimizer;
-    Rg = Param.Rg;
-    C = Param.C;
-    sf = Param.sf;
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
     u = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
@@ -122,15 +118,20 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
                 end
             end
             % ---------------------------------------------------
-            % Add Gap Constraint
-            Rstar = Obj(j).Rstar;
-            rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + Rg)/Rstar)^2 + 1))) * rho0; 
-            %----------------------------------------------------
-%             rho = rho0 * exp(1 - 1/(dist_obj * dist));
-            rho_star = rho0_star * exp(1 - 1/(dist_obj * dist));
+            
+            if useOptimizer == 0
+                % Add Gap Constraint
+                Rstar = Obj(j).Rstar;
+                rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + Rg)/Rstar)^2 + 1))) * rho0;
+                rho = rho0_star * exp(1 - 1/(dist_obj * dist));
+            else
+                % Without SafeGuard
+                rho = rho0 * exp(1 - 1/(dist_obj * dist));
+            end
+
             sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
 
-            M = eye(3) - n*n'/(abs(Gamma)^(1/rho_star)*(n')*n)...
+            M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
             + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
         elseif ntu >= 0 && sf == 0
             M = eye(3);
@@ -164,7 +165,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
         Mm = Mm + Obj(j).w_tilde * Obj(j).M;
     end
 
-    UBar = Mm*u; 
+    UBar = Mm*u;
 
     function [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0)
     
@@ -205,8 +206,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
         case 0  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
+            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+%             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
             
         case 1 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));

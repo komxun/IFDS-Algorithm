@@ -10,11 +10,11 @@ C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(2);       % Scenario selection
+scene = uint8(69);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
-useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
+useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 
 % Starting location
 Xini = 0;
@@ -28,9 +28,9 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2;        % Repulsive parameter (rho >= 0)
+rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 20;            % [m]  minimum allowed gap distance
+Rg = 10;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -233,6 +233,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
 
     function totalLength = PathDistObjective(rho0, sigma0)
         Param.showDisp = 0;
+        Param.useOptimizer = 0;
         [~, ~, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, 1, Object);
    
     end
