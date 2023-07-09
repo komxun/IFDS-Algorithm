@@ -1,4 +1,4 @@
-function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object)
+function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat)
 
     % Read the parameters
     simMode = Param.simMode;
@@ -24,8 +24,14 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
+
+                % --------------- Weather constraints ------------
+                omega = weatherMat(min(round(xx)+1,200),min(round(yy)+100+1,200),rt);   
                 
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
+                %----------Modified Gamma considering Weather--------
+                Object.Gamma = 1+ Object.Gamma - exp(omega * log(Object.Gamma));
+                %----------------------------------------------------
                 [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                     Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
                 

@@ -1,5 +1,6 @@
 clc, clear, close all
-% Adding Optimization
+% load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
+load WeatherMat_321.mat
 
 % Set-up Parameters
 fontSize = 20;
@@ -133,7 +134,7 @@ for rt = 1:rtsim
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object);
+        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat);
         timer(L) = toc;
 
     end
