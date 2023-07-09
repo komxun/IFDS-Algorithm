@@ -1,6 +1,26 @@
+%% Visualize the Weather
 clc, clear, close all
 % load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
+% load WeatherMat_3.mat
 load WeatherMat_321.mat
+
+figure(88)
+
+set(gca, 'YDir', 'normal')
+colormap turbo
+
+contourf(1:200,1:200,weatherMat(:,:,1), 30)
+hold on 
+% [C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+% clabel(C2,h2,'FontSize',15,'Color','w')
+
+
+title("Weather Data")
+set(gca, 'YDir', 'normal')
+axis equal tight
+colorbar
+
+%%
 
 % Set-up Parameters
 fontSize = 20;
@@ -315,7 +335,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     
     subplot(2,2,2)
     colormap(flipud(turbo))
-    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels, 'ShowText','on'), hold on
+    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels), hold on
     [C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     colorbar
@@ -377,9 +397,8 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
                 end
             end
 
-%             gam = 1 + gam - 10*exp(omega .* log(gam));
-%             gam = 30.*(gam./30 + omega)./2;
-              gam = omega;
+            gam = 1 + gam - exp(omega .* log(gam));
+%             gam = omega;
              
         end
 

@@ -1,25 +1,22 @@
 clc, clear, close all
 
-% Function Size
-Sx = 2; % [m]
-Sy = 2; % [m]
-
 % number of point
 Nx = 200;
-Ny = round(Nx*Sy/Sx);
+Ny = 200;
+tmax = 100;
 
-% Generate Random Function
-
+weatherMat = zeros(Nx, Ny, tmax);
+numSeed = 555;
 
 figure(88)
 axis equal tight
 colormap turbo
 
-for t = 1:50
-    f = 0.02;   % control the randomness  
-            % higher = faster randomness (higher noise frequency)
-    rand('seed',69)
-    % 0.999 to make sure f is less than 1
+for t = 1:tmax
+    f = 0.018;   % Increase the randomness control parameter
+    
+    rand('seed', numSeed)
+    
     nx1 = 1 + floor(0.999*f*Nx);
     nx2 = Nx - nx1 + 1;
     ny1 = 1 + floor(0.999*f*Nx);
@@ -32,25 +29,32 @@ for t = 1:50
     
     F = real(ifft2(F));  % 2D iFFT
     
-    % Function Axes
-    dx = Sx/Nx;
-    xa = [0.5:Nx-0.5]*dx;
-    dy = Sy/Ny;
-    ya = [0.5:Ny-0.5]*dy;
-    
-    % Draw Function
-    % imagesc(xa,ya,F.')
-    
-%     colorbar
+    % Scale the values to the desired range (0.2 - 1)
+    F = (F - min(F(:))) ./ (max(F(:)) - min(F(:)));
+    F = F * 1.2;
+    F(F>1) = 1;
+
     imagesc(F)
+    
+    hold on 
+    [C2,h2] = contourf(1:200, 1:200, F, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    
+    clabel(C2,h2,'FontSize',15,'Color','w')
+    axis equal tight
+    
     title(num2str(t,'time = %4.1f s'))
     set(gca, 'YDir', 'normal')
     colorbar
-    pause(0.1)
-    
-    
+    pause(0.01)
+    hold off
+
+    weatherMat(:,:,t) = F;
 end
 
-
 set(gca, 'YDir', 'normal')
+fileName = "WeatherMat_" + num2str(numSeed) +".mat";
+% save(fileName, 'weatherMat')
+
+
 
