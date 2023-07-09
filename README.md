@@ -1,6 +1,7 @@
 # This version
-- [x] Restructure the code - separate `main_dynamic.m` and `IFDS.m` for easy development.
-- [x] Simplify all plot functions into `PlotPath()`
+- [x] Added local and global optimization feature (Interim or SQP) - Enabled by `useOptimizer` variable. The optimization algorithm is done by `fmincon` built-in function. The global optimization cost function is the total path length. The local optimization cost function is $\bar{U}^T \bar{U}$
+- [x] Safeguard function for rho0 - Input the minimum allowed gap distance `Rg`. The Safeguard is happening inside the `calc_ubar` function where `rho0_star` is introduced
+- [x] Improved program structure (added `Param` table containing all important parameters) 
 
 # Not finished
 - [ ] Constraints matrix not introduced (e.g. Weather data)
@@ -13,7 +14,6 @@
 # Problem Noticed
 - **Problem1**: The effect of overlapped object ruined the path planning result
 - **Problem2**: The Barrier of the cylinder, cone, and parallel piped are not uniformly enclosed -> This is because of how the safeguard function is derived from sphere
-- **Problem3**: After restructuring the code, the Global Optimizer ran a lot slower (but maybe more accurate than `verion2_legacy` since the objective function considers the SafeGuard and identical to the IFDS algorithm called in the main file)
 
 # Possible Solutions
 - **Problem1**: Follow the literature to solve the overlapped problem
