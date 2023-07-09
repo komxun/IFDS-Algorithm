@@ -2,6 +2,7 @@ clc, clear, close all
 % Adding Optimization
 
 % Set-up Parameters
+fontSize = 20;
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
@@ -30,7 +31,7 @@ Zfinal = 10;
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 10;            % [m]  minimum allowed gap distance
+Rg = 0;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -195,105 +196,12 @@ end
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
 % subtitle(['SF = ' num2str(sf)], 'FontSize', 24)
-set(gca,'FontSize', 24)
+set(gca,'FontSize', fontSize)
 camlight
-%% Plot Gamma Distribution
 
-xr = 0:200;
-yr = -100:100;
-zr = 0:100;
-
-% fixed plane
-xfixed = 100;
-yfixed = 0;
-zfixed = 0;
-
-% limits of the rectangular plane
-x_plane_limits = [min(xr), max(xr)];
-y_plane_limits = [min(yr), max(yr)];
-z_plane_limits = [min(zr), max(zr)];
-
-xy_vertices = [x_plane_limits(1), y_plane_limits(1), zfixed;
-               x_plane_limits(1), y_plane_limits(2), zfixed;
-               x_plane_limits(2), y_plane_limits(2), zfixed;
-               x_plane_limits(2), y_plane_limits(1), zfixed];
-yz_vertices = [xfixed, y_plane_limits(1), z_plane_limits(1);
-               xfixed, y_plane_limits(2), z_plane_limits(1);
-               xfixed, y_plane_limits(2), z_plane_limits(2);
-               xfixed, y_plane_limits(1), z_plane_limits(2)];
-xz_vertices = [x_plane_limits(1), yfixed, z_plane_limits(1);
-               x_plane_limits(1), yfixed, z_plane_limits(2);
-               x_plane_limits(2), yfixed, z_plane_limits(2);
-               x_plane_limits(2), yfixed, z_plane_limits(1)];
-faces = [1,2,3,4];
-
-
-% Create a grid of X and Y values for X-Y, Y-Z, and X-Z plane
-[X_grid_xy, Y_grid_xy] = meshgrid(xr, yr);
-[Y_grid_yz, Z_grid_yz] = meshgrid(yr, zr);
-[X_grid_xz, Z_grid_xz] = meshgrid(xr, zr);
-
-% Convert the symbolic function to a numerical function
-Gamma_numeric = matlabFunction(Gamma, 'Vars', [X, Y, Z]);
-
-% Calculate Gamma for each  pair plane
-Gamma_values_XY = Gamma_numeric(X_grid_xy, Y_grid_xy, zfixed);
-Gamma_values_YZ = Gamma_numeric(xfixed, Y_grid_yz, Z_grid_yz);
-Gamma_values_XZ = Gamma_numeric(X_grid_xz, yfixed, Z_grid_xz);
-
-% Define the number of countrou levels
-num_levels = 30;
-max_Gamm = max([max(max(Gamma_values_XY)), max(max(Gamma_values_YZ)), max(max(Gamma_values_XZ))]);
-
-% Plot the Gamma distribution
+% Plot Gamma Distribution
 figure(96)
-sp1 = subplot(2,2,1);
-fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
-fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-patch('Vertices', xy_vertices, 'Faces', faces, 'FaceColor', 'blue', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-patch('Vertices', yz_vertices, 'Faces', faces, 'FaceColor', 'red', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-patch('Vertices', xz_vertices, 'Faces', faces, 'FaceColor', 'green', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-axis equal
-xlim([0 200])
-ylim([-100 100])
-zlim([0 100])
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
-
-subplot(2,2,2)
-colormap(flipud(turbo))
-contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels), hold on
-[C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [1, 1], 'FaceAlpha',0,...
-    'LineColor', 'w', 'LineWidth', 2);
-colorbar, clim([0 max_Gamm])
-clabel(C1,h1,'FontSize',15,'Color','w')
-xlabel('X [m]'), ylabel('Y [m]')
-title("Top view (Z = " + num2str(zfixed) + ")");
-grid on, grid minor, axis equal tight, hold off
-
-% Plot the Y-Z plane distribution
-subplot(2,2,3)
-contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, num_levels), hold on
-[C2,h2] = contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, [1, 1], 'FaceAlpha',0,...
-    'LineColor', 'w', 'LineWidth', 2);
-colorbar, clim([0 max_Gamm])
-clabel(C2,h2,'FontSize',15,'Color','w')
-xlabel('Y [m]'), ylabel('Z [m]')
-title("Front view (X = " + num2str(xfixed) + ")");
-grid on, grid minor, axis equal tight, hold off
-
-% Plot the X-Z plane distribution
-subplot(2,2,4)
-contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, num_levels), hold on
-[C3,h3] = contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, [1, 1], 'FaceAlpha',0,...
-    'LineColor', 'w', 'LineWidth', 2);
-colorbar, clim([0 max_Gamm])
-clabel(C3,h3,'FontSize',15,'Color','w')
-xlabel('X [m]'), ylabel('Z [m]');
-title("Side view (Y = " + num2str(yfixed) +")");
-grid on, grid minor, axis equal tight, hold off
-
-colormap(sp1, pink)
-sgtitle('Distribution of \Gamma(X, Y, Z)')
+PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize)
 
 %% ------------------------------Function---------------------------------
 
@@ -336,6 +244,107 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
    
     end
     
+end
+function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize)
+    xr = 0:200;
+    yr = -100:100;
+    zr = 0:100;
+    
+    % fixed plane
+    xfixed = 100;
+    yfixed = 0;
+    zfixed = 0;
+    
+    % limits of the rectangular plane
+    x_plane_limits = [min(xr), max(xr)];
+    y_plane_limits = [min(yr), max(yr)];
+    z_plane_limits = [min(zr), max(zr)];
+    
+    xy_vertices = [x_plane_limits(1), y_plane_limits(1), zfixed;
+                   x_plane_limits(1), y_plane_limits(2), zfixed;
+                   x_plane_limits(2), y_plane_limits(2), zfixed;
+                   x_plane_limits(2), y_plane_limits(1), zfixed];
+    yz_vertices = [xfixed, y_plane_limits(1), z_plane_limits(1);
+                   xfixed, y_plane_limits(2), z_plane_limits(1);
+                   xfixed, y_plane_limits(2), z_plane_limits(2);
+                   xfixed, y_plane_limits(1), z_plane_limits(2)];
+    xz_vertices = [x_plane_limits(1), yfixed, z_plane_limits(1);
+                   x_plane_limits(1), yfixed, z_plane_limits(2);
+                   x_plane_limits(2), yfixed, z_plane_limits(2);
+                   x_plane_limits(2), yfixed, z_plane_limits(1)];
+    faces = [1,2,3,4];
+    
+    
+    % Create a grid of X and Y values for X-Y, Y-Z, and X-Z plane
+    [X_grid_xy, Y_grid_xy] = meshgrid(xr, yr);
+    [Y_grid_yz, Z_grid_yz] = meshgrid(yr, zr);
+    [X_grid_xz, Z_grid_xz] = meshgrid(xr, zr);
+    
+    % Convert the symbolic function to a numerical function
+    Gamma_numeric = matlabFunction(Gamma, 'Vars', [X, Y, Z]);
+    
+    % Calculate Gamma for each  pair plane
+    Gamma_values_XY = Gamma_numeric(X_grid_xy, Y_grid_xy, zfixed);
+    Gamma_values_YZ = Gamma_numeric(xfixed, Y_grid_yz, Z_grid_yz);
+    Gamma_values_XZ = Gamma_numeric(X_grid_xz, yfixed, Z_grid_xz);
+    
+    % Define the number of countrou levels
+    num_levels = 30;
+    max_Gamm = max([max(max(Gamma_values_XY)), max(max(Gamma_values_YZ)), max(max(Gamma_values_XZ))]);
+
+    % Plot the Gamma distribution
+    sp1 = subplot(2,2,1);
+    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
+    fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
+    patch('Vertices', xy_vertices, 'Faces', faces, 'FaceColor', 'blue', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    patch('Vertices', yz_vertices, 'Faces', faces, 'FaceColor', 'red', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    patch('Vertices', xz_vertices, 'Faces', faces, 'FaceColor', 'green', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+    axis equal
+    xlim([0 200])
+    ylim([-100 100])
+    zlim([0 100])
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
+    set(gca, 'FontSize', fontSize)
+    
+    subplot(2,2,2)
+    colormap(flipud(turbo))
+    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels), hold on
+    [C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    colorbar, clim([0 max_Gamm])
+    clabel(C1,h1,'FontSize',15,'Color','w')
+    xlabel('X [m]'), ylabel('Y [m]')
+    title("Top view (Z = " + num2str(zfixed) + ")");
+    grid on, grid minor, axis equal tight, hold off
+    set(gca, 'FontSize', fontSize)
+    
+    % Plot the Y-Z plane distribution
+    subplot(2,2,3)
+    contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, num_levels), hold on
+    [C2,h2] = contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    colorbar, clim([0 max_Gamm])
+    clabel(C2,h2,'FontSize',15,'Color','w')
+    xlabel('Y [m]'), ylabel('Z [m]')
+    title("Front view (X = " + num2str(xfixed) + ")");
+    grid on, grid minor, axis equal tight, hold off
+    set(gca, 'FontSize', fontSize)
+    
+    % Plot the X-Z plane distribution
+    subplot(2,2,4)
+    contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, num_levels), hold on
+    [C3,h3] = contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    colorbar, clim([0 max_Gamm])
+    clabel(C3,h3,'FontSize',15,'Color','w')
+    xlabel('X [m]'), ylabel('Z [m]');
+    title("Side view (Y = " + num2str(yfixed) +")");
+    grid on, grid minor, axis equal tight, hold off
+    set(gca, 'FontSize', fontSize)
+    
+    colormap(sp1, pink)
+    sgt = sgtitle('Distribution of \Gamma(X, Y, Z)');
+    sgt.FontSize = fontSize + 2;
 end
 
 function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
