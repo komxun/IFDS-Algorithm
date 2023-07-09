@@ -18,7 +18,7 @@ colormap turbo
 for t = 1:50
     f = 0.02;   % control the randomness  
             % higher = faster randomness (higher noise frequency)
-    rand('seed',0)
+    rand('seed',69)
     % 0.999 to make sure f is less than 1
     nx1 = 1 + floor(0.999*f*Nx);
     nx2 = Nx - nx1 + 1;
@@ -50,8 +50,6 @@ for t = 1:50
     
     
 end
-
-
 
 
 set(gca, 'YDir', 'normal')
