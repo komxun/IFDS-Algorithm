@@ -1,4 +1,4 @@
-function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat)
+function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
 
     % Read the parameters
     simMode = Param.simMode;
@@ -26,9 +26,14 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 zz = Wp(3,t);
 
                 % --------------- Weather constraints ------------
-                omega = weatherMat(min(round(xx)+1,200),min(round(yy)+100+1,200),rt);   
+                xid = min(round(xx)+1,200);
+                yid = min(round(yy)+100+1,200);
+
+                omega = weatherMat(yid, xid, rt);   
+                dwdx_now = dwdx(yid, xid);
+                dwdy_now = dwdy(yid, xid);
                 
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
+                Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now);
                 %----------Modified Gamma considering Weather--------
                 Object.Gamma = 1+ Object.Gamma - exp(omega * log(Object.Gamma));
                 %----------------------------------------------------
@@ -208,13 +213,13 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
 
 end
 
-function Obj = create_scene(num, Obj, X, Y, Z, rt)
+function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
     switch num
         case 0  % Single object
-%             Obj(1) = create_cone(100, 0, 0, 50, 80, Obj(1));
-            Obj(1) = create_sphere(100, 0, 0, 50, Obj(1));
-%             Obj(1) = create_cylinder(100, 0, 0, 25, 60, Obj(1));
-%             Obj(1) = create_pipe(100, 0, 0, 25, 60, Obj(1));
+%             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
+            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+%             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
+%             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
             
         case 1 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
@@ -281,9 +286,16 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
+        dGdx_p = dGdx - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdx + (omega/Gamma)*dGdx);
+        dGdy_p = dGdy - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdy + (omega/Gamma)*dGdy);
+        dGdz_p = dGdz - exp(omega * log(abs(Gamma)))*((omega/Gamma)*dGdz);
+
         % n and t
-        n = [dGdx; dGdy; dGdz];
-        t = [dGdy; -dGdx; 0];
+%         n = [dGdx; dGdy; dGdz];
+%         t = [dGdy; -dGdx; 0];
+% 
+        n = [dGdx_p; dGdy_p; dGdz_p];
+        t = [dGdy_p; -dGdx_p; 0];
 
         
         % Save to Field

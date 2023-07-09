@@ -1,11 +1,12 @@
 %% Visualize the Weather
 clc, clear, close all
 % load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
-% load WeatherMat_3.mat
-load WeatherMat_321.mat
+% load WeatherMat_3.mat   % Good! (ok for rt = 100!)
+load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
+% load WeatherMat_321.mat
+
 
 figure(88)
-
 set(gca, 'YDir', 'normal')
 colormap turbo
 
@@ -14,11 +15,40 @@ hold on
 % [C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
 % clabel(C2,h2,'FontSize',15,'Color','w')
 
-
 title("Weather Data")
 set(gca, 'YDir', 'normal')
 axis equal tight
 colorbar
+
+
+% Gradient
+figure
+% Define the X, Y, and Z coordinates
+X = 1:200;
+Y = 1:200;
+Z = zeros(length(Y), length(X));
+
+% Compute the gradient of the matrix numerically
+dwdx = diff(weatherMat(:,:,1), 1, 2);
+dwdy = diff(weatherMat(:,:,1), 1, 1);
+
+% Pad the gradient matrices to match the size of the original matrix
+dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
+dwdy = [dwdy; zeros(1, size(dwdy, 2))];
+
+% Plot the gradient vectors
+[X_grid, Y_grid] = meshgrid(X, Y);
+quiver(X_grid(1:5:end), Y_grid(1:5:end), dwdx(1:5:end), dwdy(1:5:end),2);
+axis equal tight;
+
+% Set the correct axis limits and labels
+xlim([0, 200]);
+% ylim([-100, 100]);
+xlabel('X');
+ylabel('Y');
+
+% Add a title
+title('Numerical Gradient of the Matrix');
 
 %%
 
@@ -49,10 +79,10 @@ Yfinal = 0;
 Zfinal = 10;
 
 % Tuning Parameters
-sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
+sf    = uint8(1);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 0;            % [m]  minimum allowed gap distance
+Rg = 10;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -143,6 +173,13 @@ for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
 
+    dwdx = diff(weatherMat(:,:,rt), 1, 2);
+    dwdy = diff(weatherMat(:,:,rt), 1, 1);
+    % Pad the gradient matrices to match the size of the original matrix
+    dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
+    dwdy = [dwdy; zeros(1, size(dwdy, 2))];
+    size(dwdx)
+
     for L = 1:numLine
         
         loc_final = destin(L,:)';
@@ -154,7 +191,7 @@ for rt = 1:rtsim
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat);
+        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy);
         timer(L) = toc;
 
     end
@@ -162,9 +199,14 @@ for rt = 1:rtsim
     disp("Average computed time = " + num2str(mean(timer)) + " s")
     % Plotting the path
     figure(70)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+    imagesc(0:200, -100:100, weatherMat(:,:,rt))
+    colormap turbo
+    colorbar
+    hold off
     title(num2str(rt,'time = %4.1f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    view(0,90)
         
 end
 % =========================================================================
@@ -173,6 +215,7 @@ animation = 1;
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
 syms omega(X,Y) wet(X,Y)
+
 
 figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
@@ -205,10 +248,14 @@ for rt = 1:rtsim
             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
         end
         colormap pink
+        clim([0 1])
         xlim([0 200])
         ylim([-100 100])
         zlim([0 100])
     end
+    imagesc(0:200, -100:100, weatherMat(:,:,rt))
+    colormap turbo
+    
     title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf)]);
     subtitle(num2str(rt,'time = %4.1f s'))
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
@@ -224,7 +271,7 @@ camlight
 
 %% Plot Gamma Distribution
 figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
+PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMat)
 
 %% ------------------------------Function---------------------------------
 
@@ -268,10 +315,12 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     end
     
 end
+
 function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     xr = 0:200;
     yr = -100:100;
-    zr = 0:100;
+%     zr = 0:100;
+    zr = 0:200;
     
     % fixed plane
     xfixed = 100;
@@ -304,23 +353,23 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     [X_grid_xz, Z_grid_xz] = meshgrid(xr, zr);
     
     % Convert the symbolic function to a numerical function
-%     Gamma_numeric = matlabFunction(Gamma, 'Vars', [X, Y, Z]);
-%     Gamma_numeric = @(X,Y,Z)(X./2.5e+1-4.0).^2+Y.^2./6.25e+2+Z.^2./6.25e+2
+    Gamma_numeric = matlabFunction(Gamma, 'Vars', [X, Y, Z]);
 
 
 %     Gamma_numeric = Gamma_numeric +  1 - exp(omega * log(Gamma_numeric));
     
     % Calculate Gamma for each  pair plane
-    Gamma_values_XY = Gamma_numeric(X_grid_xy, Y_grid_xy, zfixed);
-    Gamma_values_YZ = Gamma_numeric(xfixed, Y_grid_yz, Z_grid_yz);
-    Gamma_values_XZ = Gamma_numeric(X_grid_xz, yfixed, Z_grid_xz);
+    Gamma_values_XY_og = Gamma_numeric(X_grid_xy, Y_grid_xy, zfixed);
+    Gamma_values_XY = Gamma_numeric_mod(X_grid_xy, Y_grid_xy, zfixed);
+    Gamma_values_YZ = Gamma_numeric_mod(xfixed, Y_grid_yz, Z_grid_yz);
+    Gamma_values_XZ = Gamma_numeric_mod(X_grid_xz, yfixed, Z_grid_xz);
     
-    % Define the number of countrou levels
+    % Define the number of countour levels
     num_levels = 30;
     max_Gamm = max([max(max(Gamma_values_XY)), max(max(Gamma_values_YZ)), max(max(Gamma_values_XZ))]);
 
     % Plot the Gamma distribution
-    sp1 = subplot(2,2,1);
+    sp1 = subplot(2,3,1);
     fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
     fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
     patch('Vertices', xy_vertices, 'Faces', faces, 'FaceColor', 'blue', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
@@ -332,41 +381,65 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     zlim([0 100])
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
     set(gca, 'FontSize', fontSize)
-    
-    subplot(2,2,2)
+
+    subplot(2,3,2)
     colormap(flipud(turbo))
+    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY_og, num_levels), hold on
+    [C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY_og, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    clabel(C1,h1,'FontSize',15,'Color','w')
+    xlabel('X [m]'), ylabel('Y [m]')
+    title("Original \Gamma - Top view (Z = " + num2str(zfixed) + ")");
+    grid on, grid minor, axis equal tight, hold off
+    colorbar
+    set(gca, 'FontSize', fontSize)
+
+    subplot(2,3,3)
+    set(gca, 'YDir', 'normal')
+    contourf(1:200,1:200, weatherMat(:,:,1), num_levels), hold on
+    [C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
+    clabel(C2,h2,'FontSize',15,'Color','w')
+    xlabel('X [m]'), ylabel('Y [m]')
+    title("Original Weather Data - Top view (Z = " + num2str(zfixed) + ")");
+    grid on, grid minor, axis equal tight, hold off
+    set(gca, 'FontSize', fontSize)
+    colorbar
+   
+    subplot(2,3,4)
     contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels), hold on
-    [C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [1, 1], 'FaceAlpha',0,...
+    [C3,h3] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     colorbar
 %     clim([0 max_Gamm])
-    clabel(C1,h1,'FontSize',15,'Color','w')
+    clabel(C3,h3,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Y [m]')
     title("Top view (Z = " + num2str(zfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize)
     
     % Plot the Y-Z plane distribution
-    subplot(2,2,3)
+    subplot(2,3,5)
     contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, num_levels), hold on
-    [C2,h2] = contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, [1, 1], 'FaceAlpha',0,...
+    [C4,h4] = contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     colorbar
 %     clim([0 max_Gamm])
-    clabel(C2,h2,'FontSize',15,'Color','w')
+    clabel(C4,h4,'FontSize',15,'Color','w')
     xlabel('Y [m]'), ylabel('Z [m]')
     title("Front view (X = " + num2str(xfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize, 'XDir', 'reverse')
+    
     
     % Plot the X-Z plane distribution
-    subplot(2,2,4)
+    subplot(2,3,6)
     contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, num_levels), hold on
-    [C3,h3] = contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, [1, 1], 'FaceAlpha',0,...
+    [C5,h5] = contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     colorbar
 %     clim([0 max_Gamm])
-    clabel(C3,h3,'FontSize',15,'Color','w')
+    clabel(C5,h5,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Z [m]');
     title("Side view (Y = " + num2str(yfixed) +")");
     grid on, grid minor, axis equal tight, hold off
@@ -376,13 +449,12 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     sgt = sgtitle('Distribution of \Gamma(X, Y, Z)');
     sgt.FontSize = fontSize + 2;
 
-    function gam = Gamma_numeric(X,Y,Z)
-        gam = (X./2.5e+1-4.0).^2+Y.^2./6.25e+2+Z.^2./6.25e+2;
+    function gam = Gamma_numeric_mod(X,Y,Z)
+        gam = Gamma_numeric(X,Y,Z);
 
         
         if size(X,1) > 1 && size(Y,1) >1
 
-            disp('yes')
             xid = round(X)+1;
             yid = round(Y)+100+1;
             
@@ -393,7 +465,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
             for i = 1:size(xid,1)
                 
                 for j = 1:size(xid,2)
-                    omega(i,j) = weatherMat(xid(i,j), yid(i,j), 1);
+                    omega(i,j) = weatherMat(yid(i,j), xid(i,j), 1);
                 end
             end
 
