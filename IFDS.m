@@ -35,7 +35,7 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 
                 Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now);
                 %----------Modified Gamma considering Weather--------
-                Object.Gamma = 1+ Object.Gamma - exp(omega * log(Object.Gamma));
+%                 Object.Gamma = 1+ Object.Gamma - exp(omega * log(Object.Gamma));
                 %----------------------------------------------------
                 [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                     Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
@@ -217,8 +217,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
     switch num
         case 0  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-%             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
+%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+            Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
 %             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
             
         case 1 % single(complex) object
@@ -290,6 +290,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
         dGdy_p = dGdy - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdy + (omega/Gamma)*dGdy);
         dGdz_p = dGdz - exp(omega * log(abs(Gamma)))*((omega/Gamma)*dGdz);
 
+        Gamma = 1+ Gamma - exp(omega * log(Gamma));
         % n and t
 %         n = [dGdx; dGdy; dGdz];
 %         t = [dGdy; -dGdx; 0];
@@ -328,10 +329,19 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
+        dGdx_p = dGdx - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdx + (omega/Gamma)*dGdx);
+        dGdy_p = dGdy - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdy + (omega/Gamma)*dGdy);
+        dGdz_p = dGdz - exp(omega * log(abs(Gamma)))*((omega/Gamma)*dGdz);
+
+        Gamma = 1+ Gamma - exp(omega * log(Gamma));
+
         % n and t
-        n = [dGdx; dGdy; dGdz];
-        t = [dGdy; -dGdx; 0];
+%         n = [dGdx; dGdy; dGdz];
+%         t = [dGdy; -dGdx; 0];
         
+        n = [dGdx_p; dGdy_p; dGdz_p];
+        t = [dGdy_p; -dGdx_p; 0];
+
         % Save to Field
         Obj.origin(rt,:) = [x0, y0, z0]; 
         Obj.Gamma = Gamma;

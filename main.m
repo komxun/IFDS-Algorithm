@@ -51,18 +51,18 @@ ylabel('Y');
 title('Numerical Gradient of the Matrix');
 
 %%
-
+saveVid = 1;
 % Set-up Parameters
 fontSize = 20;
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 1;                   % [s] (50) time for the whole scenario 
+rtsim = 50;                   % [s] (50) time for the whole scenario 
 dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(0);       % Scenario selection
+multiTarget = uint8(1);      % 1: multi-target 0: single-target
+scene = uint8(12);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
@@ -79,9 +79,9 @@ Yfinal = 0;
 Zfinal = 10;
 
 % Tuning Parameters
-sf    = uint8(1);   % Shape-following demand (1=on, 0=off)
-rho0  = 0.5;        % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;      % Tangential parameter 
+sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
+rho0  = 2;        % Repulsive parameter (rho >= 0)
+sigma0 = 0.1;      % Tangential parameter 
 Rg = 10;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
@@ -199,14 +199,11 @@ for rt = 1:rtsim
     disp("Average computed time = " + num2str(mean(timer)) + " s")
     % Plotting the path
     figure(70)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
-    imagesc(0:200, -100:100, weatherMat(:,:,rt))
-    colormap turbo
-    colorbar
-    hold off
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     title(num2str(rt,'time = %4.1f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     view(0,90)
+    hold off
         
 end
 % =========================================================================
@@ -219,49 +216,60 @@ syms omega(X,Y) wet(X,Y)
 
 figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
-view(-43,52)
 for rt = 1:rtsim
     figure(69)
+    subplot(2,2,1)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-
-    for j = 1:size(Object,2)
-        x0 = Object(j).origin(rt, 1);
-        y0 = Object(j).origin(rt, 2);
-        z0 = Object(j).origin(rt, 3);
-        a = Object(j).a;
-        b = Object(j).b;
-        c = Object(j).c;
-        p = Object(j).p;
-        q = Object(j).q;
-        r = Object(j).r;
-
-        Rstar = Object(j).Rstar;
-    
-        Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-        Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
-
-        if rtsim > 1
-            fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-        else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-        end
-        colormap pink
-        clim([0 1])
-        xlim([0 200])
-        ylim([-100 100])
-        zlim([0 100])
-    end
+    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     imagesc(0:200, -100:100, weatherMat(:,:,rt))
-    colormap turbo
-    
-    title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf)]);
-    subtitle(num2str(rt,'time = %4.1f s'))
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    grid minor
+    set(gca, 'LineWidth', 2)
     hold off
+    colormap turbo
+    clim([0 1])
 
+    subplot(2,2,2);
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+    imagesc(0:200, -100:100, weatherMat(:,:,rt))
+    grid minor
+    set(gca, 'LineWidth', 2)
+    view(0,90)
+    hold off
+    colormap turbo
+    clim([0 1])
+
+    subplot(2,2,3)
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+    grid minor
+    set(gca, 'LineWidth', 2)
+    view(90,0)
+    hold off
+    clim([0 1])
+
+    subplot(2,2,4);
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+    grid minor
+    set(gca, 'LineWidth', 2)
+    view(0,0)
+    hold off
+    clim([0 1])
+
+    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')]);
+
+    % Video saving
+    if saveVid
+        frm(rt) = getframe(gcf) ;
+        drawnow
+    end
 end
+
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
@@ -269,7 +277,30 @@ end
 set(gca,'FontSize', fontSize)
 camlight
 
+
+if saveVid
+    video_name = "Dynamic_Constraint_Matrix_" + num2str(12) + ".avi";
+    % create the video writer with 1 fps
+    writerObj = VideoWriter(video_name);
+    writerObj.FrameRate = 30;
+    % set the seconds per image
+    % open the video writer
+    open(writerObj);
+    % write the frames to the video
+    for i=1:length(frm)
+        % convert the image to a frame
+        frame = frm(i) ;    
+        writeVideo(writerObj, frame);
+    end
+    % close the writer object
+    close(writerObj);
+end
+
 %% Plot Gamma Distribution
+
+
+
+
 figure(96)
 PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMat)
 
@@ -317,8 +348,8 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
 end
 
 function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
-    xr = 0:200;
-    yr = -100:100;
+    xr = 0:1:200;
+    yr = -100:1:100;
 %     zr = 0:100;
     zr = 0:200;
     
@@ -401,7 +432,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
         'LineColor', 'w', 'LineWidth', 2);
     clabel(C2,h2,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Y [m]')
-    title("Original Weather Data - Top view (Z = " + num2str(zfixed) + ")");
+    title("Original Constraint Matrix");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize)
     colorbar
@@ -414,7 +445,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
 %     clim([0 max_Gamm])
     clabel(C3,h3,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Y [m]')
-    title("Top view (Z = " + num2str(zfixed) + ")");
+    title("\Gamma_c - Top view (Z = " + num2str(zfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize)
     
@@ -427,7 +458,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
 %     clim([0 max_Gamm])
     clabel(C4,h4,'FontSize',15,'Color','w')
     xlabel('Y [m]'), ylabel('Z [m]')
-    title("Front view (X = " + num2str(xfixed) + ")");
+    title("\Gamma_c - Front view (X = " + num2str(xfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize, 'XDir', 'reverse')
     
@@ -441,7 +472,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
 %     clim([0 max_Gamm])
     clabel(C5,h5,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Z [m]');
-    title("Side view (Y = " + num2str(yfixed) +")");
+    title("\Gamma_c - Side view (Y = " + num2str(yfixed) +")");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize)
     
@@ -476,6 +507,38 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
 
         
     end
+end
+
+function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
+    for j = 1:size(Object,2)
+        x0 = Object(j).origin(rt, 1);
+        y0 = Object(j).origin(rt, 2);
+        z0 = Object(j).origin(rt, 3);
+        a = Object(j).a;
+        b = Object(j).b;
+        c = Object(j).c;
+        p = Object(j).p;
+        q = Object(j).q;
+        r = Object(j).r;
+
+        Rstar = Object(j).Rstar;
+    
+        Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
+        Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
+
+%         if rtsim > 1
+%             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
+%             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
+%         else
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
+            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
+%         end
+%         colormap pink
+        xlim([0 200])
+        ylim([-100 100])
+        zlim([0 100])
+    end
+
 end
 
 function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
