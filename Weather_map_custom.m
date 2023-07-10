@@ -9,15 +9,14 @@ tmax = 1;
 
 weatherMat = zeros(Nx, Ny, tmax);
 % numSeed = 8187;
-numSeed = 123;
+numSeed = 1999;
 
 figure(88)
 axis equal tight
 colormap turbo
 
 for t = 1:tmax
-%     f = 0.015;   % Increase the randomness control parameter
-    f = 0.05;
+    f = 0.015;   % Increase the randomness control parameter
     rand('seed', numSeed)
     
     nx1 = 1 + floor(0.999*f*Nx);
@@ -37,13 +36,13 @@ for t = 1:tmax
     F = F * 1.22;
     F(F>1) = 1;
 
-    imagesc(F)
-    
+%     imagesc(F)
+    contourf(1:200, 1:200, F, 30)
     hold on 
-%     [C2,h2] = contourf(1:200, 1:200, F, [1, 1], 'FaceAlpha',0,...
-%         'LineColor', 'w', 'LineWidth', 2);
+    [C2,h2] = contourf(1:200, 1:200, F, [1, 1], 'FaceAlpha',0,...
+        'LineColor', 'w', 'LineWidth', 2);
     
-%     clabel(C2,h2,'FontSize',15,'Color','w')
+    clabel(C2,h2,'FontSize',15,'Color','w')
     axis equal tight
     
     
