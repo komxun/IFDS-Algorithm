@@ -9,8 +9,8 @@ dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
-scene = uint8(2);       % Scenario selection
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
+scene = uint8(12);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
@@ -28,7 +28,7 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;        % Repulsive parameter (rho >= 0)
+rho0  = 10;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 Rg = 10;            % [m]  minimum allowed gap distance
 
@@ -157,7 +157,7 @@ figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
 for rt = 1:rtsim
     figure(69)
-    subplot(3,3,1:6)
+    subplot(2,2,1)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -165,7 +165,7 @@ for rt = 1:rtsim
     set(gca, 'LineWidth', 2)
     hold off
 
-    subplot(3,3,7);
+    subplot(2,2,2);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -174,7 +174,7 @@ for rt = 1:rtsim
     view(0,90)
     hold off
 
-    subplot(3,3,8)
+    subplot(2,2,3)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -183,7 +183,7 @@ for rt = 1:rtsim
     view(90,0)
     hold off
 
-    subplot(3,3,9);
+    subplot(2,2,4);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -192,7 +192,8 @@ for rt = 1:rtsim
     view(0,0)
     hold off
 
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')]);
+    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
+        num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
 end
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
