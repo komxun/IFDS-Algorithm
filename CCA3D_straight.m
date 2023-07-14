@@ -1,6 +1,7 @@
 function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V)
-global animation dt
 
+dt = 0.01;
+animation = 0;
 %.. Time
 t(1) = 0 ;                 % Simulation Time [s]
 %.. Position and Velocity of UAV
@@ -164,10 +165,9 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
         
         if animation
             ss = scatter(x(i),y(i), 'filled', 'MarkerFaceColor','blue');
-            pause(0.05)
+            pause(0.01)
             delete(ss)
         end
     end
     subtitle({'Carrot Chasing Algorithm',['\delta = ' num2str(delta) '  \kappa = ' num2str(kappa)]})
 end
-
