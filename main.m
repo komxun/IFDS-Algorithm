@@ -1,7 +1,7 @@
 clc, clear, close all
 
 % Set-up Parameters
-fontSize = 20;
+fontSize = 18;
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
@@ -9,7 +9,7 @@ dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(0);      % 1: multi-target 0: single-target
+multiTarget = uint8(1);      % 1: multi-target 0: single-target
 scene = uint8(0);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
@@ -30,7 +30,7 @@ Zfinal = 10;
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 20;            % [m]  minimum allowed gap distance
+delta_g = 20;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -51,7 +51,7 @@ Param.simMode = simMode;
 Param.multiTarget = multiTarget;
 Param.scene = scene;
 Param.sf = sf;
-Param.Rg = Rg;
+Param.Rg = delta_g;
 Param.rho0_initial = rho0;
 Param.sigma0_initial = sigma0;
 Param.Xini = Xini;
@@ -147,36 +147,36 @@ for rt = 1:rtsim
         
 end
 %% =========================== Path Following =============================
-
-x_i = Xini;
-y_i = Yini;
-z_i = Zini;
-psi_i = 0;
-gamma_i = 0;
-
-trajectory = [Xini; Yini; Zini];
-
-for j = 1:length(Paths{1,:})-1
-    
-    Wi = [x_i; y_i; z_i];
-    Wf = Paths{1}(:,j+1);
-
-    [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C);
-    x_i = x(end);
-    y_i = y(end);
-    psi_i = psi(end);
-    gamma_i = gamma(end);
-
-    trajectory = [trajectory, [x y z]'];
-
-end
-figure(70)
-PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
-plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-
-title(num2str(rt,'time = %4.1f s')) 
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-% view(0,90)
+% 
+% x_i = Xini;
+% y_i = Yini;
+% z_i = Zini;
+% psi_i = 0;
+% gamma_i = 0;
+% 
+% trajectory = [Xini; Yini; Zini];
+% 
+% for j = 1:length(Paths{1,:})-1
+%     
+%     Wi = [x_i; y_i; z_i];
+%     Wf = Paths{1}(:,j+1);
+% 
+%     [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C);
+%     x_i = x(end);
+%     y_i = y(end);
+%     psi_i = psi(end);
+%     gamma_i = gamma(end);
+% 
+%     trajectory = [trajectory, [x y z]'];
+% 
+% end
+% figure(70)
+% PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+% plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+% 
+% title(num2str(rt,'time = %4.1f s')) 
+% xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+% % view(0,90)
 
 
 %% Plotting Results
@@ -184,54 +184,53 @@ animation = 1;
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) 
 
-
 figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
 for rt = 1:rtsim
     figure(69)
-    subplot(2,2,1)
+    subplot(3,3,1:6)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
-    set(gca, 'LineWidth', 2)
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize)
     hold off
 
-    subplot(2,2,2);
+    subplot(3,3,7);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
-    set(gca, 'LineWidth', 2)
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize)
     view(0,90)
     hold off
 
-    subplot(2,2,3)
+    subplot(3,3,8)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
-    set(gca, 'LineWidth', 2)
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize)
     view(90,0)
     hold off
 
-    subplot(2,2,4);
+    subplot(3,3,9);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
-    set(gca, 'LineWidth', 2)
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize)
     view(0,0)
     hold off
 
     sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
-        num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
+        num2str(sf),', \delta_g = ', num2str(delta_g), ' m, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
 end
-legend(["IFDS Path", "", "Target destination", "CCA kappa = 20, delta = 5"])
+% legend(["IFDS Path", "", "Target destination", "CCA kappa = 20, delta = 5"])
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
@@ -438,20 +437,20 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
         plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
         scatter3(Xini, Yini, Zini, 'filled', 'r')
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150)
-        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150)
+        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     else
         plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
         hold on, grid on, grid minor, axis equal
-        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150)
+        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     end
 
     xlim([0 200])
