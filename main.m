@@ -51,18 +51,18 @@ ylabel('Y');
 title('Numerical Gradient of the Matrix');
 
 %%
-saveVid = 1;
+saveVid = 0;
 % Set-up Parameters
 fontSize = 20;
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 50;                   % [s] (50) time for the whole scenario 
+rtsim = 1;                   % [s] (50) time for the whole scenario 
 dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
-scene = uint8(12);       % Scenario selection
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
+scene = uint8(0);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
@@ -80,7 +80,7 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2;        % Repulsive parameter (rho >= 0)
+rho0  = 1;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.1;      % Tangential parameter 
 Rg = 10;            % [m]  minimum allowed gap distance
 
@@ -178,7 +178,6 @@ for rt = 1:rtsim
     % Pad the gradient matrices to match the size of the original matrix
     dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
     dwdy = [dwdy; zeros(1, size(dwdy, 2))];
-    size(dwdx)
 
     for L = 1:numLine
         
@@ -186,7 +185,7 @@ for rt = 1:rtsim
         
         %------------Global Path Optimization-------------
         if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object);
+           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMat, dwdx, dwdy);
         end
         %------------------------------------------------
         
@@ -238,7 +237,8 @@ for rt = 1:rtsim
     set(gca, 'LineWidth', 2)
     view(0,90)
     hold off
-    colormap turbo
+    colormap jet
+    colorbar
     clim([0 1])
 
     subplot(2,2,3)
@@ -307,7 +307,7 @@ PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMat)
 %% ------------------------------Function---------------------------------
 
 
-function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object)
+function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMat, dwdx, dwdy)
 
     xg = [Param.rho0_initial; Param.sigma0_initial];
 
@@ -341,7 +341,8 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     function totalLength = PathDistObjective(rho0, sigma0)
         Param.showDisp = 0;
         Param.useOptimizer = 0;
-        [~, ~, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, 1, Object);
+        [~, ~, totalLength] = ...
+            IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, 1, Object, weatherMat, dwdx, dwdy);
    
     end
     
@@ -425,9 +426,10 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     colorbar
     set(gca, 'FontSize', fontSize)
 
-    subplot(2,3,3)
+    sp3 = subplot(2,3,3);
     set(gca, 'YDir', 'normal')
-    contourf(1:200,1:200, weatherMat(:,:,1), num_levels), hold on
+    contourf(1:200,1:200, weatherMat(:,:,1), num_levels); 
+    hold on
     [C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     clabel(C2,h2,'FontSize',15,'Color','w')
@@ -435,6 +437,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat)
     title("Original Constraint Matrix");
     grid on, grid minor, axis equal tight, hold off
     set(gca, 'FontSize', fontSize)
+    colormap(sp3,turbo)
     colorbar
    
     subplot(2,3,4)
