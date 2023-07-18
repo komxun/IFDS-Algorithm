@@ -294,8 +294,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
-        k = 1000;
-        B_u = 1;     % Good: k=1 | B_u=0.7 | B_L = 0 
+        k = 0.01;     % Higher(1000) = more effect from weather
+                      % Lower(~0.01) = less effect  0 = no weather effect
+        B_u = 0.8;     % Good: k=1 | B_u=0.7 | B_L = 0 
         B_L = 0.2;   % Good: k=100 | B_u=1 | B_L = 0.5
         
         % V4
