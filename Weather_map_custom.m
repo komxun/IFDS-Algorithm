@@ -2,22 +2,24 @@ clc, clear, close all
 
 saveVid = 0;   % 1: save  2: no
 
+fontSize = 24;
+
 % number of point
 Nx = 200;
 Ny = 200;
-tmax = 1;
+tmax = 30;
 
 weatherMat = zeros(Nx, Ny, tmax);
 % numSeed = 8187;
-numSeed = 123;
+numSeed = 69;
 
 figure(88)
 axis equal tight
 colormap turbo
 
 for t = 1:tmax
-%     f = 0.015;   % Increase the randomness control parameter
-    f = 0.05;
+    f = 0.015;   % Increase the randomness control parameter
+%     f = 0.05;     % Lower = higher frequency
     rand('seed', numSeed)
     
     nx1 = 1 + floor(0.999*f*Nx);
@@ -35,6 +37,7 @@ for t = 1:tmax
     % Scale the values to the desired range (0.2 - 1)
     F = (F - min(F(:))) ./ (max(F(:)) - min(F(:)));
     F = F * 1.22;
+%     F = F * 1.15;
     F(F>1) = 1;
 
     imagesc(F)
@@ -47,9 +50,9 @@ for t = 1:tmax
     axis equal tight
     
     
-    title("Seed: " + num2str(numSeed) + ", f = " + num2str(f))
-%     subtitle(num2str(t,'time = %4.1f s'))
-    set(gca, 'YDir', 'normal')
+    title("numSeed = " + num2str(numSeed) + ", f = " + num2str(f)...
+        + num2str(t,', time = %4.1f s'))
+    set(gca, 'YDir', 'normal', 'FontSize', fontSize)
     colorbar
     pause(0.01)
     hold off
@@ -63,7 +66,7 @@ for t = 1:tmax
     weatherMat(:,:,t) = F;
 end
 
-set(gca, 'YDir', 'normal')
+set(gca, 'YDir', 'normal', 'LineWidth', 2)
 fileName = "WeatherMat_" + num2str(numSeed) +".mat";
 % save(fileName, 'weatherMat')
 

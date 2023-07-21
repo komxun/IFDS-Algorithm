@@ -62,9 +62,10 @@ C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(0);       % Scenario selection
-                        % 0) 1 cone, 2) 1 complex object
-                        % 7) non-urban 12) urban environment
+scene = 1;       % Scenario selection
+                % 0) NO object 1) 1 object, 2) 2 objects 
+                % 3) 3 objects 4) 3 complex objects
+                % 7) non-urban 12) urban environment
 
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 
@@ -116,10 +117,11 @@ Param.useOptimizer = useOptimizer;
 
 % Structure Pre-allocation for each scene
 switch scene
-    case 0, numObj = 1;
+    case 0, numObj = 0;
     case 1, numObj = 1;
     case 2, numObj = 2;
     case 3, numObj = 3;
+    case 4, numObj = 3;
     case 7, numObj = 7;
     case 12, numObj = 12;
     case 41, numObj = 1;
@@ -127,7 +129,7 @@ switch scene
     case 69, numObj = 4;
 end
 
-Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
+Object(numObj~=0) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
     'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0);
 
 disp(['Number of object: ' num2str(size(Object,2))])
@@ -298,11 +300,10 @@ end
 
 %% Plot Gamma Distribution
 
-
-
-
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMat)
+if scene ~= 0
+    figure(96)
+    PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMat)
+end
 
 %% ------------------------------Function---------------------------------
 

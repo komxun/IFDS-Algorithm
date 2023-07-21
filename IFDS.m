@@ -41,11 +41,15 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                     dwdx_now = dwdx(yid, xid);
                     dwdy_now = dwdy(yid, xid);
                 end
-                
-                Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now);
-
-                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                    Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
+                if scene == 0
+                    dist = sqrt((xx - xd)^2 + (yy - yd)^2 + (zz - zd)^2);
+                    UBar = -[C*(xx - xd)/dist, C*(yy - yd)/dist, C*(zz - zd)/dist]';
+                else
+                    Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now);
+    
+                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                        Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
+                end
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -222,14 +226,16 @@ end
 
 function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
     switch num
-        case 0  % Single object
+
+        case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-%             Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
+%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+            Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
+%               Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
 %             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
 %             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
             
-        case 1 % single(complex) object
+        case 4 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
             Obj(2) = create_pipe(60, 20, 60, 80, 5, Obj(2));
             Obj(3) = create_pipe(130, -30, 30, 100, 5, Obj(3));
@@ -290,14 +296,14 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
        
         % Object Shape Equation
         Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-        
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
-        k = 0.01;     % Higher(1000) = more effect from weather
+%         k = 1000;
+        k = Gamma;     % Higher(1000) = more effect from weather
                       % Lower(~0.01) = less effect  0 = no weather effect
-        B_u = 0.8;     % Good: k=1 | B_u=0.7 | B_L = 0 
-        B_L = 0.2;   % Good: k=100 | B_u=1 | B_L = 0.5
+        B_u = 1;     % Good: k=1 | B_u=0.7 | B_L = 0 
+        B_L = 0;   % Good: k=100 | B_u=1 | B_L = 0.5
         
         % V4
         if omega<= B_L
