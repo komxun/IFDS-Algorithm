@@ -9,7 +9,7 @@ dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = uint8(0);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
@@ -30,7 +30,7 @@ Zfinal = 10;
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-delta_g = 20;            % [m]  minimum allowed gap distance
+delta_g = 10;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -147,36 +147,36 @@ for rt = 1:rtsim
         
 end
 %% =========================== Path Following =============================
-% 
-% x_i = Xini;
-% y_i = Yini;
-% z_i = Zini;
-% psi_i = 0;
-% gamma_i = 0;
-% 
-% trajectory = [Xini; Yini; Zini];
-% 
-% for j = 1:length(Paths{1,:})-1
-%     
-%     Wi = [x_i; y_i; z_i];
-%     Wf = Paths{1}(:,j+1);
-% 
-%     [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C);
-%     x_i = x(end);
-%     y_i = y(end);
-%     psi_i = psi(end);
-%     gamma_i = gamma(end);
-% 
-%     trajectory = [trajectory, [x y z]'];
-% 
-% end
-% figure(70)
-% PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
-% plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
-% 
-% title(num2str(rt,'time = %4.1f s')) 
-% xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-% % view(0,90)
+
+x_i = Xini;
+y_i = Yini;
+z_i = Zini;
+psi_i = 0;
+gamma_i = 0;
+
+trajectory = [Xini; Yini; Zini];
+
+for j = 1:length(Paths{1,:})-1
+    
+    Wi = [x_i; y_i; z_i];
+    Wf = Paths{1}(:,j+1);
+
+    [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C);
+    x_i = x(end);
+    y_i = y(end);
+    psi_i = psi(end);
+    gamma_i = gamma(end);
+
+    trajectory = [trajectory, [x y z]'];
+
+end
+figure(70)
+PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+
+title(num2str(rt,'time = %4.1f s')) 
+xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+% view(0,90)
 
 
 %% Plotting Results
@@ -190,7 +190,7 @@ for rt = 1:rtsim
     figure(69)
     subplot(3,3,1:6)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
@@ -199,7 +199,7 @@ for rt = 1:rtsim
 
     subplot(3,3,7);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
@@ -209,7 +209,7 @@ for rt = 1:rtsim
 
     subplot(3,3,8)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
@@ -219,7 +219,7 @@ for rt = 1:rtsim
 
     subplot(3,3,9);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-%     plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
