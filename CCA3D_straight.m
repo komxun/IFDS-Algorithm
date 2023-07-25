@@ -1,4 +1,4 @@
-function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V)
+function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, Wfm1)
 
 dt = 0.01;
 animation = 0;
@@ -8,14 +8,14 @@ t(1) = 0 ;                 % Simulation Time [s]
 va     = V ;                 % UAV Velocity [m/s]
 
 %.. Maximum Lateral Acceleration of UAV
-Rmin = 50;                % UAV Minimum Turn Radius [m]  (lower is better)
+Rmin = 10;                % UAV Minimum Turn Radius [m]  (lower is better)
 % Rmin = 13 ;             % UAV Minimum Turn Radius [m]
 umax = va^2 / Rmin ;       % UAV Maximum Lateral Acceleration [m]
 
 
 del_psi(1)=0;
 %-----------------------Design Parameters---------------------------------
-tuning = 2;
+tuning = 3;
 switch tuning
     case 1
         kappa =  0.2 ;              % Gain
@@ -25,8 +25,16 @@ switch tuning
         delta = 5;
         kd = 0;
     case 3
-        kappa = 0.6;
+        kappa = 10;
         delta = 10;
+        kd = 0.1;
+    case 4
+        kappa = 100;
+        delta = 1;
+        kd = 0;
+    case 5
+        kappa = 200;
+        delta = 40;
         kd = 0;
 end
 % ------------------------------------------------------------------------
@@ -42,17 +50,34 @@ psi(1) = psi0 ;               % Initial UAV Heading Angle [rad]
 gamma(1) = gamma0;            % Initial UAV Pitch Angle [rad]
 p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
 
-    while (x(i+1) < Wf(1)) 
-        
-        i = i + 1; 
+
+% -------------------------------------------
+% Normal plane checker
+% Find an equation of the plane through the point Wf and perpendicular to
+% the vector (Wf - Wi)
+Rw_vect = Wf - Wi;
+path_vect = Wf - Wfm1;
+ox = Wf(1);
+oy = Wf(2);
+oz = Wf(3);
+a = path_vect(1);
+b = path_vect(2);
+c = path_vect(3);
+
+check = 1;
+
+    while a*(x(i+1) - ox) + b*(y(i+1) - oy) + c*(z(i+1) - oz) < 0
+%     while (x(i+1) < Wf(1)) 
+%     while 1
+
+        i = i + 1;
         
         %==============================================================================%
         %.. Path Following Algorithm
         
         % Step 1
         % Distance between initial waypoint and current UAV position, Ru
-        Ru_vect = Wi - p(:,i);
-        Rw_vect = Wf - Wi;
+        Ru_vect = Wi - p(:,i); 
         Ru = norm(Wi - p(:,i));
 
         % Step 2
@@ -71,10 +96,11 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
         % Step 4
         % Distance between initial waypoint and q, R
         if (norm(Ru_vect) ~= 0) && (norm(Rw_vect) ~= 0)
-            alpha = acos( dot(Ru_vect, Rw_vect)/( norm(Ru_vect) * norm(Rw_vect)) );
+            alpha = real(acos( dot(Ru_vect, Rw_vect)/( norm(Ru_vect) * norm(Rw_vect)) ));
         else
             alpha = 0;
         end
+
         R = sqrt( Ru^2 - (Ru*sin(alpha))^2 );
         
         % Step 5
@@ -85,6 +111,7 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
         
         % Step 6
         % Desired heading angle, psi_d
+        
         psi_d = atan2(yt - p(2,i), xt - p(1,i));
         % Desired pitch angle gamma_d ( CHECK AGAIN!! )
         gamma_d = atan2(zt - p(3,i), sqrt(  (xt - p(1,i))^2 + (yt - p(2,i))^2  ));
@@ -129,10 +156,10 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
         end
 
         % Limit u2
-        if u1(i) > umax
-            u1(i) = umax;
-        elseif u1(i) < -umax
-            u1(i) = - umax;
+        if u2(i) > umax
+            u2(i) = umax;
+        elseif u2(i) < -umax
+            u2(i) = - umax;
         end
         %==============================================================================%
      
@@ -168,6 +195,15 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
             pause(0.01)
             delete(ss)
         end
+        
+%         if norm([x(i+1) y(i+1) z(i+1)]' - Wf) < 1
+%             break;
+%         end
+        if i > 10000
+            break;
+        end
     end
+    
+
     subtitle({'Carrot Chasing Algorithm',['\delta = ' num2str(delta) '  \kappa = ' num2str(kappa)]})
 end

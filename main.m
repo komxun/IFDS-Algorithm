@@ -16,15 +16,26 @@ scene = uint8(0);       % Scenario selection
 
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 
-% Starting location
+% Path's Starting location
 Xini = 0;
-Yini = 0;
-Zini = 0;
+Yini = -100;
+Zini = 10;
 
 % Target Destination
 Xfinal = 200;
-Yfinal = 0;
-Zfinal = 10;
+Yfinal = 100;
+Zfinal = 20;
+
+% UAV's Initial State
+x_i = 0;
+y_i = 0;
+z_i = 0;
+psi_i = 0;          % [rad] Initial Yaw angle
+gamma_i = 0;        % [rad] Initial Pitch angle
+
+
+
+
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
@@ -148,26 +159,36 @@ for rt = 1:rtsim
 end
 %% =========================== Path Following =============================
 
-x_i = Xini;
-y_i = Yini;
-z_i = Zini;
-psi_i = 0;
-gamma_i = 0;
 
-trajectory = [Xini; Yini; Zini];
+trajectory = [x_i; y_i; z_i];
 
 for j = 1:length(Paths{1,:})-1
-    
-    Wi = [x_i; y_i; z_i];
+
+    Wfm1 = Paths{1}(:,j);
+%     Wi = [x_i; y_i; z_i];
+    Wi = Wfm1;
     Wf = Paths{1}(:,j+1);
 
-    [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C);
-    x_i = x(end);
-    y_i = y(end);
-    psi_i = psi(end);
-    gamma_i = gamma(end);
+    path_vect = Wf - Wfm1;
+    a = path_vect(1);
+    b = path_vect(2);
+    c = path_vect(3);
+    
+    % Check if the waypoint is ahead of current position
+    if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
 
-    trajectory = [trajectory, [x y z]'];
+        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, Wfm1);
+        x_i = x(end);
+        y_i = y(end);
+        z_i = z(end);
+        psi_i = psi(end);
+        gamma_i = gamma(end);
+    
+        trajectory = [trajectory, [x y z]']; 
+    else
+        disp("skip waypoint #" + num2str(j)) 
+    end
+    
 
 end
 figure(70)
