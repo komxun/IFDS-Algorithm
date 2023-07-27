@@ -1,4 +1,4 @@
-function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, Wfm1)
+function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, Wfm1, tuning)
 
 dt = 0.01;
 animation = 0;
@@ -11,32 +11,12 @@ va     = V ;                 % UAV Velocity [m/s]
 Rmin = 10;                % UAV Minimum Turn Radius [m]  (lower is better)
 % Rmin = 13 ;             % UAV Minimum Turn Radius [m]
 umax = va^2 / Rmin ;       % UAV Maximum Lateral Acceleration [m]
-
-
 del_psi(1)=0;
+
 %-----------------------Design Parameters---------------------------------
-tuning = 3;
-switch tuning
-    case 1
-        kappa =  0.2 ;              % Gain
-        delta =  40;                % Carrot Distance
-    case 2
-        kappa = 20;
-        delta = 5;
-        kd = 0;
-    case 3
-        kappa = 10;
-        delta = 10;
-        kd = 0.1;
-    case 4
-        kappa = 100;
-        delta = 1;
-        kd = 0;
-    case 5
-        kappa = 200;
-        delta = 40;
-        kd = 0;
-end
+kappa = tuning(1);
+delta = tuning(2);
+kd = tuning(3);
 % ------------------------------------------------------------------------
 
 % Path Following Algorithm - CCA (Carrot Chasing Algorithm)
@@ -205,5 +185,5 @@ check = 1;
     end
     
 
-    subtitle({'Carrot Chasing Algorithm',['\delta = ' num2str(delta) '  \kappa = ' num2str(kappa)]})
+%     subtitle({'CCA',['\delta = ' num2str(delta) '  \kappa = ' num2str(kappa)]})
 end

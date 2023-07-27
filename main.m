@@ -10,38 +10,60 @@ C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = uint8(0);       % Scenario selection
-                        % 0) 1 cone, 2) 1 complex object
-                        % 7) non-urban 12) urban environment
+scene = 2;       % Scenario selection
+                % 0) NO object 1) 1 object, 2) 2 objects 
+                % 3) 3 objects 4) 3 complex objects
+                % 7) non-urban 12) urban environment
 
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 
 % Path's Starting location
 Xini = 0;
-Yini = -100;
+Yini = 0;
 Zini = 10;
 
 % Target Destination
 Xfinal = 200;
-Yfinal = 100;
+Yfinal = 0;
 Zfinal = 20;
 
 % UAV's Initial State
 x_i = 0;
-y_i = 0;
+y_i = -50;
 z_i = 0;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
-
-
-
-
-% Tuning Parameters
+% IFDS Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 0.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-delta_g = 10;            % [m]  minimum allowed gap distance
+delta_g = 20;       % [m]  minimum allowed gap distance
+
+% CCA Tuning Parameters
+ccaTuning = 5;
+switch ccaTuning
+    case 1
+        kappa =  10 ;              % Gain
+        delta =  2;                % Carrot Distance
+        kd = 0;
+    case 2
+        kappa = 20;
+        delta = 5;
+        kd = 0;
+    case 3
+        kappa = 10;
+        delta = 10;
+        kd = 0.1;
+    case 4
+        kappa = 100;
+        delta = 1;
+        kd = 0;
+    case 5
+        kappa = 50;
+        delta = 20;
+        kd = 0;
+end
 
 x_guess = [rho0; sigma0];
 
@@ -75,10 +97,11 @@ Param.useOptimizer = useOptimizer;
 
 % Structure Pre-allocation for each scene
 switch scene
-    case 0, numObj = 1;
+    case 0, numObj = 0;
     case 1, numObj = 1;
     case 2, numObj = 2;
     case 3, numObj = 3;
+    case 4, numObj = 3;
     case 7, numObj = 7;
     case 12, numObj = 12;
     case 41, numObj = 1;
@@ -153,15 +176,16 @@ for rt = 1:rtsim
     figure(70)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     title(num2str(rt,'time = %4.1f s')) 
+    subtitle("CCA, \kappa = " + num2str(kappa) + ", \delta = " + num2str(delta))
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     view(0,90)
         
 end
 %% =========================== Path Following =============================
 
-
 trajectory = [x_i; y_i; z_i];
 
+tuning = [kappa, delta, kd]; 
 for j = 1:length(Paths{1,:})-1
 
     Wfm1 = Paths{1}(:,j);
@@ -177,7 +201,7 @@ for j = 1:length(Paths{1,:})-1
     % Check if the waypoint is ahead of current position
     if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
 
-        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, Wfm1);
+        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, Wfm1, tuning);
         x_i = x(end);
         y_i = y(end);
         z_i = z(end);
@@ -248,10 +272,12 @@ for rt = 1:rtsim
     view(0,0)
     hold off
 
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
-        num2str(sf),', \delta_g = ', num2str(delta_g), ' m, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
+    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
+        num2str(sf),', \delta_g = ', num2str(delta_g), ' m, ', num2str(rt,'time = %4.1f s')]; ...
+        "CCA, \kappa = " + num2str(kappa) + ", \delta = " + num2str(delta)], 'Fontsize', fontSize+2);
 end
 % legend(["IFDS Path", "", "Target destination", "CCA kappa = 20, delta = 5"])
+
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
@@ -260,8 +286,10 @@ end
 
 
 %% Plot Gamma Distribution
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8)
+if scene~=0
+    figure(96)
+    PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8)
+end
 
 %% ------------------------------Function---------------------------------
 

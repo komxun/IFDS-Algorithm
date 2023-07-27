@@ -205,13 +205,13 @@ end
 
 function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
-        case 0  % Single object
+        case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
             Obj(1) = create_sphere(100, 5, 0, 60, Obj(1));
 %             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
 %             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
             
-        case 1 % single(complex) object
+        case 4 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
             Obj(2) = create_pipe(60, 20, 60, 80, 5, Obj(2));
             Obj(3) = create_pipe(130, -30, 30, 100, 5, Obj(3));
