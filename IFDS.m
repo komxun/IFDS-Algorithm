@@ -10,7 +10,10 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
     C = Param.C;
     showDisp = Param.showDisp;
     useOptimizer = Param.useOptimizer;
-    Rg = Param.Rg;
+    delta_g = Param.Rg;
+    k = Param.k;
+    B_U = Param.B_U;
+    B_L = Param.B_L;
 
     % Initialization
     xd = loc_final(1);
@@ -30,6 +33,7 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 if (xx < 199) && (yy < 199)
                     % Data Interpolating Method
                     option = 'nearest';
+                    
                     omega = interp2(weatherMat(:,:,rt), xx+1, yy+101, option);
                     dwdx_now = interp2(dwdx, xx+1, yy+101, option);
                     dwdy_now = interp2(dwdy, xx+1, yy+101, option);
@@ -45,10 +49,10 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                     dist = sqrt((xx - xd)^2 + (yy - yd)^2 + (zz - zd)^2);
                     UBar = -[C*(xx - xd)/dist, C*(yy - yd)/dist, C*(zz - zd)/dist]';
                 else
-                    Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now);
+                    Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now, k, B_U, B_L);
     
                     [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                        Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
+                        Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
                 end
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
@@ -103,7 +107,7 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
 
 end
 
-function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, Rg, C, sf, time)
+function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, delta_g, C, sf, time)
 
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
@@ -144,7 +148,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
             if useOptimizer == 0
                 % Add Gap Constraint
                 Rstar = Obj(j).Rstar;
-                rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + Rg)/Rstar)^2 + 1))) * rho0;
+                rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + delta_g)/Rstar)^2 + 1))) * rho0;
                 rho = rho0_star * exp(1 - 1/(dist_obj * dist));
             else
                 % Without SafeGuard
@@ -224,7 +228,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
 
 end
 
-function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
+function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy, k, B_u, B_L)
     switch num
 
         case 1  % Single object
@@ -299,16 +303,15 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
-%         k = 1000;
-        k = Gamma;     % Higher(1000) = more effect from weather
-                      % Lower(~0.01) = less effect  0 = no weather effect
-        B_u = 1;     % Good: k=1 | B_u=0.7 | B_L = 0 
-        B_L = 0;   % Good: k=100 | B_u=1 | B_L = 0.5
         
         % V4
-        if omega<= B_L
-            omega = B_L;
-        end
+%         if omega<= B_L
+%             omega = B_L;
+%         end
+
+        
+
+
         if k~=0
             dGdx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
                 ( log((Gamma-1)/k +1)/(B_L-B_u) * dwdx - ((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdx );
@@ -316,8 +319,10 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy)
             dGdy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
                 ( log((Gamma-1)/k+1)/(B_L-B_u) * dwdy - ((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdy );
             
-            dGdz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
-                ( -((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdz );
+%             dGdz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
+%                 ( -((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdz );
+
+            dGdz_p = dGdz;
 
             Gamma = Gamma - k* (exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) -1);
 
