@@ -1,4 +1,4 @@
-function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, Wfm1, tuning)
+function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, tuning)
 
 dt = 0.01;
 animation = 0;
@@ -36,13 +36,12 @@ p(:,1) = [ x(1), y(1), z(1) ]' ;    % UAV Position Initialization [m]
 % Find an equation of the plane through the point Wf and perpendicular to
 % the vector (Wf - Wi)
 Rw_vect = Wf - Wi;
-path_vect = Wf - Wfm1;
 ox = Wf(1);
 oy = Wf(2);
 oz = Wf(3);
-a = path_vect(1);
-b = path_vect(2);
-c = path_vect(3);
+a = Rw_vect(1);
+b = Rw_vect(2);
+c = Rw_vect(3);
 
 check = 1;
 
@@ -97,11 +96,19 @@ check = 1;
         gamma_d = atan2(zt - p(3,i), sqrt(  (xt - p(1,i))^2 + (yt - p(2,i))^2  ));
 
         % Wrapping up psid
-        psi_d = rem(psi_d,2*pi);
+        psi_d = rem(psi_d, 2*pi);
+        gamma_d = rem(gamma_d, 2*pi);
+
         if psi_d < -pi
             psi_d = psi_d + 2*pi;
         elseif psi_d > pi
             psi_d = psi_d-2*pi;
+        end
+
+        if gamma_d < -pi
+            gamma_d = gamma_d + 2*pi;
+        elseif gamma_d > pi
+            gamma_d = gamma_d-2*pi;
         end
         
         % Limit turning angle
@@ -124,7 +131,7 @@ check = 1;
         del_psi(i+1) = (psi_d - psi(i));
         u1(i) = (kappa*del_psi(i+1) + kd*(del_psi(i+1)-del_psi(i))/dt)*va;
         
-        % Guidance Pitch commend, u2
+        % Guidance Pitch command, u2
         del_gam(i+1) = (gamma_d - gamma(i));
         u2(i) = (kappa*del_gam(i+1) + kd*(del_gam(i+1)-del_gam(i))/dt)*va;
 

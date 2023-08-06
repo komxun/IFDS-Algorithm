@@ -25,10 +25,6 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 yy = Wp(2,t);
                 zz = Wp(3,t);
                 
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
-    
-                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                    Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -36,34 +32,40 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                     Paths{L,rt} = Wp;    % Save into cell array
                     break
                 else
+                    Object = create_scene(scene, Object, xx, yy, zz, rt);
+    
+                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                        Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
 
             end
 
         case 2 % simulate by reaching distance
-            disp("Simulating by distance until " + num2str(targetThresh) + " m error range")
             t = 1;
    
-            while norm([Wp(1,t) Wp(2,t) Wp(3,t)] - double([xd yd zd])) > targetThresh
-
+            while true
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
+                
+                
+                if norm([xx yy zz] - [xd yd zd]) < targetThresh
+%                     disp('Target destination reached!')
+                    Wp = Wp(:,1:t);
+                    Paths{L,rt} = Wp;    % Save into cell array
+                    break
+                else
+                    Object = create_scene(scene, Object, xx, yy, zz, rt);
+    
+                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                        Object, rho0, sigma0, useOptimizer, Rg, C, sf, t);
+                    Wp(:,t+1) = Wp(:,t) + UBar * dt;
+                end
 
-                if n(xx,yy,zz)'*u(xx,yy,zz) < 0 || sf == 1
-        %             disp('case 1 activated')
-                    Wp(:,t+1) = Wp(:,t) + double(UBar(Wp(1,t), Wp(2,t), Wp(3,t))) * dt;
-        
-                elseif n(xx,yy,zz)'*u(xx,yy,zz) >= 0 && sf == 0
-        %             disp('case 2 activated')
-                    Wp(:,t+1) = Wp(:,t) + double(u(Wp(1,t), Wp(2,t), Wp(3,t))) * dt;
-                end  
                 t = t+1;
+
             end
-            % Removing extra space
-            Wp = Wp(:,1:t,:); 
-            disp('Target destination reached!')
     end
 
     %======================= post-Calculation =============================

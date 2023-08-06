@@ -3,12 +3,12 @@ clc, clear, close all
 % Set-up Parameters
 fontSize = 18;
 showDisp = 1;
-tsim = uint16(400);          % [s] simulation time for the path 
+tsim = uint16(400);          % Maximum path length 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
 dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
-simMode = uint8(1);          % 1: by time, 2: by target distance
+simMode = uint8(2);          % 1: by time, 2: by target distance
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = 2;       % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
@@ -123,9 +123,6 @@ switch useOptimizer
     case 2,  disp("Path optimization: Local")
 end
 
-
-%% Original Fluid
-
 if multiTarget
     destin = [200 0   20;
               200 20  20;
@@ -182,18 +179,17 @@ for rt = 1:rtsim
         
 end
 %% =========================== Path Following =============================
-
-trajectory = [x_i; y_i; z_i];
+trajectory = zeros(3, length(Paths{1,:})-1);
+trajectory(:,1) = [x_i; y_i; z_i];
 
 tuning = [kappa, delta, kd]; 
+i = 1;
 for j = 1:length(Paths{1,:})-1
 
-    Wfm1 = Paths{1}(:,j);
-%     Wi = [x_i; y_i; z_i];
-    Wi = Wfm1;
+    Wi = Paths{1}(:,j);
     Wf = Paths{1}(:,j+1);
 
-    path_vect = Wf - Wfm1;
+    path_vect = Wf - Wi;
     a = path_vect(1);
     b = path_vect(2);
     c = path_vect(3);
@@ -201,20 +197,22 @@ for j = 1:length(Paths{1,:})-1
     % Check if the waypoint is ahead of current position
     if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
 
-        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, Wfm1, tuning);
+        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
         x_i = x(end);
         y_i = y(end);
         z_i = z(end);
         psi_i = psi(end);
         gamma_i = gamma(end);
     
-        trajectory = [trajectory, [x y z]']; 
+        trajectory(:,i+1) = [x y z]';
+        i = i+1;
     else
         disp("skip waypoint #" + num2str(j)) 
     end
     
 
 end
+trajectory = trajectory(:,1:i);   % remove extra element
 figure(70)
 PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
 plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r', 'LineWidth', 1.2)
