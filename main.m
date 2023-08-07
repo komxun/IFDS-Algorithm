@@ -7,14 +7,14 @@ load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
 % load WeatherMat_321.mat
 
 % Constraint Matrix Tuning Parameters
-k = 10000;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
-B_U = 1;   % [B_L < B_U <= 1]
-B_L = 0.7;   % [0 < B_L < B_U]
+B_U = 0.7;   % [B_L < B_U <= 1]
+B_L = 0.5;   % [0 < B_L < B_U]
 
 weatherMatMod = weatherMat;
-% weatherMatMod(weatherMatMod<B_L) = B_L;
-% weatherMatMod(weatherMatMod>B_U) = 1;
+weatherMatMod(weatherMatMod<B_L) = B_L;
+weatherMatMod(weatherMatMod>B_U) = 1;
 
 figure(88)
 subplot(1,2,1)
@@ -24,7 +24,7 @@ contourf(1:200,1:200,weatherMat(:,:,1), 30)
 axis equal tight
 colorbar
 hold on 
-[C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+[C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
 clabel(C2,h2,'FontSize',15,'Color','w')
 title("Original Constraint Matrix")
 set(gca, 'YDir', 'normal', 'FontSize', fontSize)
@@ -38,7 +38,7 @@ hold on
 clabel(C2,h2,'FontSize',15,'Color','w')
 
 
-title("Filtered Constraint Matrix: B_U = " + num2str(B_U) + ", B_L = " + num2str(B_L))
+title("Filtered Constraint Matrix: B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U))
 set(gca, 'YDir', 'normal', 'FontSize', fontSize)
 axis equal tight
 colorbar
@@ -52,8 +52,8 @@ Y = 1:200;
 Z = zeros(length(Y), length(X));
 
 % Compute the gradient of the matrix numerically
-dwdx = diff(weatherMatMod(:,:,1), 1, 2);
-dwdy = diff(weatherMatMod(:,:,1), 1, 1);
+dwdx = diff(weatherMat(:,:,1), 1, 2);
+dwdy = diff(weatherMat(:,:,1), 1, 1);
 
 % Pad the gradient matrices to match the size of the original matrix
 dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
@@ -84,7 +84,7 @@ C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
 multiTarget = uint8(1);      % 1: multi-target 0: single-target
-scene = 1;       % Scenario selection
+scene = 3;       % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -103,8 +103,8 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 0.5;        % Repulsive parameter (rho >= 0)
-sigma0 = 10;      % Tangential parameter 
+rho0  = 1;        % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 Rg = 10;            % [m]  minimum allowed gap distance
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -144,21 +144,23 @@ Param.k = k;
 Param.B_U = B_U;
 Param.B_L = B_L;
 
+
 % Structure Pre-allocation for each scene
 switch scene
-    case 0, numObj = 0;
+    case 0, numObj = 1;
     case 1, numObj = 1;
     case 2, numObj = 2;
     case 3, numObj = 3;
     case 4, numObj = 3;
+    case 5, numObj = 3;
     case 7, numObj = 7;
     case 12, numObj = 12;
     case 41, numObj = 1;
     case 42, numObj = 4;
     case 69, numObj = 4;
 end
-
-Object(numObj~=0) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
+Param.numObj = numObj;
+Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
     'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0);
 
 disp(['Number of object: ' num2str(size(Object,2))])
@@ -204,8 +206,8 @@ for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
 
-    dwdx = diff(weatherMatMod(:,:,rt), 1, 2);
-    dwdy = diff(weatherMatMod(:,:,rt), 1, 1);
+    dwdx = diff(weatherMat(:,:,rt), 1, 2);
+    dwdy = diff(weatherMat(:,:,rt), 1, 1);
     % Pad the gradient matrices to match the size of the original matrix
     dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
     dwdy = [dwdy; zeros(1, size(dwdy, 2))];
@@ -216,12 +218,12 @@ for rt = 1:rtsim
         
         %------------Global Path Optimization-------------
         if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMatMod, dwdx, dwdy);
+           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMat, dwdx, dwdy);
         end
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMatMod, dwdx, dwdy);
+        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy);
         timer(L) = toc;
 
     end
@@ -249,6 +251,7 @@ figure(69)
 for rt = 1:rtsim
     figure(69)
     subplot(3,4,[1,2,5,6])
+%     subplot(2,2,1)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -260,6 +263,7 @@ for rt = 1:rtsim
     clim([0 1])
 
     subplot(3,4,[3,4,7,8]);
+%     subplot(2,2,2)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -273,6 +277,7 @@ for rt = 1:rtsim
     clim([0 1])
 
     subplot(3,4,9:10)
+%     subplot(2,2,3)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -282,7 +287,8 @@ for rt = 1:rtsim
     hold off
     clim([0 1])
 
-    subplot(3,4,11:12);
+    subplot(3,4,11:12)
+%     subplot(2,2,4)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
@@ -293,7 +299,7 @@ for rt = 1:rtsim
     clim([0 1])
 
     sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')]; ...
-        "Constraint Matrix, k = " + num2str(k) + ", B_U = " + num2str(B_U) + ", B_L = " + num2str(B_L) ], 'FontSize', fontSize+2);
+        "Constraint Matrix, k = " + num2str(k) +  ", B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U)], 'FontSize', fontSize+2);
 
     % Video saving
     if saveVid
@@ -329,10 +335,9 @@ end
 
 %% Plot Gamma Distribution
 
-if scene ~= 0
-    figure(96)
-    PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
-end
+figure(96)
+PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
+
 
 %% ------------------------------Function---------------------------------
 
@@ -359,7 +364,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     problem.nonlcon = [];
     problem.solver = 'fmincon';  % specify the solver
     problem.options = optimoptions('fmincon', ...
-        'Algorithm', 'interior-point', ...   % option2: sqp
+        'Algorithm', 'sqp', ...   % option2: sqp
         'Display', 'off');
     
     % Call fmincon
@@ -566,6 +571,7 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
 %         end
 %         colormap pink
+
         xlim([0 200])
         ylim([-100 100])
         zlim([0 100])

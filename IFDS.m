@@ -30,30 +30,56 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
 
                 % --------------- Weather constraints ------------
         
-                if (xx < 199) && (yy < 199)
-                    % Data Interpolating Method
-                    option = 'nearest';
+              
+                Object = create_scene(scene, Object, xx, yy, zz, rt);
+                if k~=0
                     
-                    omega = interp2(weatherMat(:,:,rt), xx+1, yy+101, option);
-                    dwdx_now = interp2(dwdx, xx+1, yy+101, option);
-                    dwdy_now = interp2(dwdy, xx+1, yy+101, option);
-                else
-                    % Data Cutting method
-                    xid = min(round(xx)+1,200);
-                    yid = min(round(yy)+100+1,200);
-                    omega = weatherMat(yid, xid, rt);
-                    dwdx_now = dwdx(yid, xid);
-                    dwdy_now = dwdy(yid, xid);
+                    if (xx < 199) && (yy < 199)
+                        % Data Interpolating Method
+                        option = 'linear';
+                        
+                        omega = interp2(weatherMat(:,:,rt), xx+1, yy+101, option);
+                        dwdx_now = interp2(dwdx, xx+1, yy+101, option);
+                        dwdy_now = interp2(dwdy, xx+1, yy+101, option);
+                    else
+                        % Data Cutting method
+                        xid = min(round(xx)+1,200);
+                        yid = min(round(yy)+100+1,200);
+                        omega = weatherMat(yid, xid, rt);
+                        dwdx_now = dwdx(yid, xid);
+                        dwdy_now = dwdy(yid, xid);
+                    end
+                    
+%                     omega = weatherMat(xx+1, yy+101);
+%                     dwdx_now = dwdx(xx+1, yy+101);
+%                     dwdy_now = dwdy(xx+1, yy+101);
+
+                    for j = 1:Param.numObj
+                        Gm = Object(j).Gamma;
+                        dGdx = Object(j).n(1);
+                        dGdy = Object(j).n(2);
+                        dGdz = Object(j).n(3);
+                        dGx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                            ( log((Gm-1)/k +1)/(B_L-B_U) * dwdx_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdx );
+                        
+                        dGy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                            ( log((Gm-1)/k+1)/(B_L-B_U) * dwdy_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdy );
+                        
+%                             dGz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+%                                 ( -((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdz );
+                        dGz_p = dGdz;
+
+
+                        Object(j).Gamma = Object(j).Gamma - k* (exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) -1);
+
+                        Object(j).n = [dGx_p; dGy_p; dGz_p];
+                        Object(j).t = [dGy_p; -dGx_p; 0];
+                    end
                 end
-                if scene == 0
-                    dist = sqrt((xx - xd)^2 + (yy - yd)^2 + (zz - zd)^2);
-                    UBar = -[C*(xx - xd)/dist, C*(yy - yd)/dist, C*(zz - zd)/dist]';
-                else
-                    Object = create_scene(scene, Object, xx, yy, zz, rt, omega, dwdx_now, dwdy_now, k, B_U, B_L);
-    
-                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                        Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
-                end
+
+                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                    Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
+              
                 
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -228,30 +254,39 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
 
 end
 
-function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy, k, B_u, B_L)
+function Obj = create_scene(num, Obj, X, Y, Z, rt)
     switch num
+        case 0
+            Obj(1) = create_ceiling(100, 0, 50, 200, 10, Obj(1));
 
         case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
 %             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
-%               Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
-%             Obj(1) = create_cylinder(100, 5, 0, 25, 60, Obj(1));
+%             Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
+              Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
+%             Obj(1) = create_cylinder(100, -30, 0, 25, 60, Obj(1));
 %             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
-            
-        case 4 % single(complex) object
-            Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
-            Obj(2) = create_pipe(60, 20, 60, 80, 5, Obj(2));
-            Obj(3) = create_pipe(130, -30, 30, 100, 5, Obj(3));
     
         case 2 % 2 objects
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
             Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
+
+%             Obj(1) = create_cylinder(60, 100, 0, 30, 50, Obj(1));
+%             Obj(2) = create_sphere(120, -100, 0, 50, Obj(2));
     
         case 3 % 3 objects
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
             Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
             Obj(3) = create_pipe(168, 0, 0, 25, 80, Obj(3));
+
+        case 4 % single(complex) object
+            Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
+            Obj(2) = create_pipe(60, 20, 60, 80, 5, Obj(2));
+            Obj(3) = create_pipe(130, -30, 30, 100, 50, Obj(3));
+        case 5
+            Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
+            Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
+            Obj(3) = create_ceiling(100, 0, 100, 200, 1, Obj(3));
     
         case 12 % 12 objects
             Obj(1) = create_cylinder(100, 5, 0, 30, 50, Obj(1));
@@ -302,36 +337,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy, k, B_u, B_
         Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
-
         
-        % V4
-%         if omega<= B_L
-%             omega = B_L;
-%         end
-
-        
-
-
-        if k~=0
-            dGdx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
-                ( log((Gamma-1)/k +1)/(B_L-B_u) * dwdx - ((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdx );
-            
-            dGdy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
-                ( log((Gamma-1)/k+1)/(B_L-B_u) * dwdy - ((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdy );
-            
-%             dGdz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) * ...
-%                 ( -((B_L-omega)/((Gamma-1+k)*(B_L - B_u))) *dGdz );
-
-            dGdz_p = dGdz;
-
-            Gamma = Gamma - k* (exp( (B_L - omega)/(B_L - B_u) * log((Gamma-1)/k +1) ) -1);
-
-            n = [dGdx_p; dGdy_p; dGdz_p];
-            t = [dGdy_p; -dGdx_p; 0];
-        else
-            n = [dGdx; dGdy; dGdz];
-            t = [dGdy; -dGdx; 0];
-        end
+        n = [dGdx; dGdy; dGdz];
+        t = [dGdy; -dGdx; 0];
 %-----------------------------------------------------------------------
         
         % Save to Field
@@ -364,18 +372,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy, k, B_u, B_
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
 
-        dGdx_p = dGdx - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdx + (omega/Gamma)*dGdx);
-        dGdy_p = dGdy - exp(omega * log(abs(Gamma)))*(log(abs(Gamma))*dwdy + (omega/Gamma)*dGdy);
-        dGdz_p = dGdz - exp(omega * log(abs(Gamma)))*((omega/Gamma)*dGdz);
+        n = [dGdx; dGdy; dGdz];
+        t = [dGdy; -dGdx; 0];
 
-        Gamma = 1+ Gamma - exp(omega * log(Gamma));
-
-        % n and t
-%         n = [dGdx; dGdy; dGdz];
-%         t = [dGdy; -dGdx; 0];
-        
-        n = [dGdx_p; dGdy_p; dGdz_p];
-        t = [dGdy_p; -dGdx_p; 0];
 
         % Save to Field
         Obj.origin(rt,:) = [x0, y0, z0]; 
@@ -434,6 +433,41 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt, omega, dwdx, dwdy, k, B_u, B_
              
         a = D/2;   b = D/2;   c = h;    % Object's axis length
         p = 2;     q = 2;     r = 2;  % Index parameters
+     
+        % Object Shape Equation
+        Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
+        
+        % Differential
+        [dGdx, dGdy, dGdz] = calc_dG();
+
+        % n and t
+        n = [dGdx; dGdy; dGdz];
+        t = [dGdy; -dGdx; 0];
+        
+        % Save to Field
+        Obj.origin(rt,:) = [x0, y0, z0];
+        Obj.Gamma = Gamma;
+        Obj.n = n;
+        Obj.t = t;
+        Obj.a = a;
+        Obj.b = b;
+        Obj.c = c;
+        Obj.p = p;
+        Obj.q = q;
+        Obj.r = r; 
+        Obj.Rstar = min([a,b,c]);
+        function [dGdx, dGdy, dGdz] = calc_dG()
+            dGdx = (2*p*((X - x0)/a).^(2*p - 1))/a;
+            dGdy = (2*q*((Y - y0)/b).^(2*q - 1))/b;
+            dGdz = (2*r*((Z - z0)/c).^(2*r - 1))/c;
+        end
+    end
+
+    function Obj = create_ceiling(x0, y0, z0, D, h, Obj)
+             
+        z0 = z0 + h;
+        a = D/2;   b = D/2;   c = h;    % Object's axis length
+        p = 20;     q = 20;     r = 20;  % Index parameters
      
         % Object Shape Equation
         Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
