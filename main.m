@@ -1,106 +1,69 @@
 %% Visualize the Weather
 clc, clear, close all
+
+% ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
-% load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
-% load WeatherMat_3.mat   % Good! (ok for rt = 100!)
-load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
-% load WeatherMat_321.mat
-
-% Constraint Matrix Tuning Parameters
-k = 0.5;   % Higher(1000) = more effect from weather
-           % Lower(~0.01) = less effect  0 = no weather effect
-B_U = 1;   % [B_L < B_U <= 1]
-B_L = 0;   % [0 < B_L < B_U]
-
-weatherMatMod = weatherMat;
-weatherMatMod(weatherMatMod<B_L) = B_L;
-weatherMatMod(weatherMatMod>B_U) = 1;
-
-weatherMatInterped = griddedInterpolant(weatherMat(:,:,1)');
-xspace = 1:200;
-yspace = 1:200;
-[xgrid, ygrid] = meshgrid(xspace, yspace);
-
-z_values = weatherMatInterped(xgrid,ygrid);
-[grad_x, grad_y] = gradient(z_values, xspace, yspace);
-dwdx_ip = griddedInterpolant(grad_x');
-dwdy_ip = griddedInterpolant(grad_y');
-
-figure(88)
-subplot(1,2,1)
-set(gca, 'YDir', 'normal')
-colormap turbo
-contourf(1:200,1:200,weatherMat(:,:,1), 30)
-axis equal tight
-colorbar
-hold on 
-[C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-clabel(C2,h2,'FontSize',15,'Color','w')
-title("Original Constraint Matrix")
-set(gca, 'YDir', 'normal', 'FontSize', fontSize)
-
-subplot(1,2,2)
-set(gca, 'YDir', 'normal')
-colormap turbo
-contourf(1:200,1:200,weatherMatMod(:,:,1), 30)
-hold on 
-[C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-clabel(C2,h2,'FontSize',15,'Color','w')
-
-
-title("Filtered Constraint Matrix: B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U))
-set(gca, 'YDir', 'normal', 'FontSize', fontSize)
-axis equal tight
-colorbar
-
-
-% Gradient
-figure
-% Define the X, Y, and Z coordinates
-X = 1:200;
-Y = 1:200;
-Z = zeros(length(Y), length(X));
-
-% Compute the gradient of the matrix numerically
-dwdx = diff(weatherMat(:,:,1), 1, 2);
-dwdy = diff(weatherMat(:,:,1), 1, 1);
-
-% Pad the gradient matrices to match the size of the original matrix
-dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
-dwdy = [dwdy; zeros(1, size(dwdy, 2))];
-
-% Plot the gradient vectors
-[X_grid, Y_grid] = meshgrid(X, Y);
-quiver(X_grid(1:5:end), Y_grid(1:5:end), dwdx(1:5:end), dwdy(1:5:end),2);
-axis equal tight;
-
-% Set the correct axis limits and labels
-xlim([0, 200]);
-% ylim([-100, 100]);
-xlabel('X');
-ylabel('Y');
-
-% Add a title
-title('Numerical Gradient of the Matrix');
-
-%%
 saveVid = 0;
-% Set-up Parameters
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
-dt = 0.1;            % [s] simulation time step
-C  = 30;             % [m/s] UAV cruising speed
-targetThresh = 2.5;  % [m] allowed error for final target distance 
+dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
+targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;       % Scenario selection
+scene = 3;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
-useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
+% ___________________Features Control Parameters___________________________
+useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
+delta_g = 10;            % [m]  minimum allowed gap distance
+k = 0.5;   % Higher(1000) = more effect from weather
+           % Lower(~0.01) = less effect  0 = no weather effect
 
+% ______________________IFDS Tuning Parameters_____________________________
+sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
+rho0  = 1;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
+
+% Good: rho0 = 2, simga0 = 0.01
+% The algorihtm still doesnt work for overlapped objects
+
+% _________________Constraint Matrix Tuning Paramters______________________
+B_U = 1;   % [B_L < B_U <= 1]
+B_L = 0;   % [0 < B_L < B_U]
+
+% Good: k=1 | B_u=0.7 | B_L = 0
+%     : k=100 | B_u=1 | B_L = 0.5
+
+% _______________________CCA Tuning Parameters_____________________________
+ccaTuning = 5;
+switch ccaTuning
+    case 1
+        kappa =  10 ;              % Gain
+        delta =  2;                % Carrot Distance
+        kd = 0;
+    case 2
+        kappa = 20;
+        delta = 5;
+        kd = 0;
+    case 3
+        kappa = 10;
+        delta = 10;
+        kd = 0.1;
+    case 4
+        kappa = 100;
+        delta = 1;
+        kd = 0;
+    case 5
+        kappa = 50;
+        delta = 20;
+        kd = 0;
+end
+
+% _______________________ UAV Parameters _________________________________
+C  = 30;             % [m/s] UAV cruising speed
 % Starting location
 Xini = 0;
 Yini = 0;
@@ -111,22 +74,19 @@ Xfinal = 200;
 Yfinal = 0;
 Zfinal = 10;
 
-% Tuning Parameters
-sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 10;        % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;      % Tangential parameter 
-Rg = 10;            % [m]  minimum allowed gap distance
+% UAV's Initial State
+x_i = 0;
+y_i = -20;
+z_i = 0;
+psi_i = 0;          % [rad] Initial Yaw angle
+gamma_i = 0;        % [rad] Initial Pitch angle
 
-% Good: rho0 = 2, simga0 = 0.01
-% The algorihtm still doesnt work for overlapped objects
 
 x_guess = [rho0; sigma0];
 
+% Initialize constraint matrix (separate file)
+initialize_constraint_matrix
 
-
-
-% Good: k=1 | B_u=0.7 | B_L = 0
-%     : k=100 | B_u=1 | B_L = 0.5
 
 % Save to table Param
 Param = table;
@@ -140,7 +100,7 @@ Param.simMode = simMode;
 Param.multiTarget = multiTarget;
 Param.scene = scene;
 Param.sf = sf;
-Param.Rg = Rg;
+Param.Rg = delta_g;
 Param.rho0_initial = rho0;
 Param.sigma0_initial = sigma0;
 Param.Xini = Xini;
@@ -184,9 +144,6 @@ switch useOptimizer
     case 2,  disp("Path optimization: Local")
 end
 
-
-%% Original Fluid
-
 if multiTarget
     destin = [200 0   20;
               200 20  20;
@@ -216,12 +173,6 @@ for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
 
-    dwdx = diff(weatherMat(:,:,rt), 1, 2);
-    dwdy = diff(weatherMat(:,:,rt), 1, 1);
-    % Pad the gradient matrices to match the size of the original matrix
-    dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
-    dwdy = [dwdy; zeros(1, size(dwdy, 2))];
-
     for L = 1:numLine
         
         loc_final = destin(L,:)';
@@ -247,7 +198,52 @@ for rt = 1:rtsim
     hold off
         
 end
-% =========================================================================
+%% =========================== Path Following =============================
+trajectory = zeros(3, length(Paths{1,:})-1);
+trajectory(:,1) = [x_i; y_i; z_i];
+
+tuning = [kappa, delta, kd]; 
+i = 1;
+for j = 1:length(Paths{1,:})-1
+
+    Wi = Paths{1}(:,j);
+    Wf = Paths{1}(:,j+1);
+
+    path_vect = Wf - Wi;
+    a = path_vect(1);
+    b = path_vect(2);
+    c = path_vect(3);
+    
+    % Check if the waypoint is ahead of current position
+    if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
+
+        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
+        x_i = x(end);
+        y_i = y(end);
+        z_i = z(end);
+        psi_i = psi(end);
+        gamma_i = gamma(end);
+    
+        trajectory(:,i+1) = [x y z]';
+        i = i+1;
+    else
+        disp("skip waypoint #" + num2str(j)) 
+    end
+    
+
+end
+trajectory = trajectory(:,1:i);   % remove extra element
+figure(70)
+PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+
+title(num2str(rt,'time = %4.1f s')) 
+xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+% view(0,90)
+
+
+
+
 %% Plotting Results
 animation = 1;
 
@@ -262,9 +258,10 @@ for rt = 1:rtsim
     subplot(3,4,[1,2,5,6])
 %     subplot(2,2,1)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    imagesc(0:200, -100:100, weatherMat(:,:,rt))
+    imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData',1)
     grid minor
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
     hold off
@@ -274,21 +271,23 @@ for rt = 1:rtsim
     subplot(3,4,[3,4,7,8]);
 %     subplot(2,2,2)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    imagesc(0:200, -100:100, weatherMat(:,:,rt))
+    imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData', 1)
     grid minor
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
     view(0,90)
     hold off
-    colormap jet
+    colormap turbo
     colorbar
     clim([0 1])
 
     subplot(3,4,9:10)
 %     subplot(2,2,3)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
@@ -299,7 +298,8 @@ for rt = 1:rtsim
     subplot(3,4,11:12)
 %     subplot(2,2,4)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
@@ -307,7 +307,7 @@ for rt = 1:rtsim
     hold off
     clim([0 1])
 
-    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')]; ...
+    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...
         "Constraint Matrix, k = " + num2str(k) +  ", B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U)], 'FontSize', fontSize+2);
 
     % Video saving
@@ -576,7 +576,7 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 %             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
 %             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
 %         else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',0.9,'MeshDensity',80), hold on
             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
 %         end
 %         colormap pink
@@ -611,7 +611,7 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
         scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
         hold on, grid on, grid minor, axis equal
         scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
