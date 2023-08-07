@@ -9,12 +9,22 @@ load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
 % Constraint Matrix Tuning Parameters
 k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
-B_U = 0.7;   % [B_L < B_U <= 1]
-B_L = 0.5;   % [0 < B_L < B_U]
+B_U = 1;   % [B_L < B_U <= 1]
+B_L = 0;   % [0 < B_L < B_U]
 
 weatherMatMod = weatherMat;
 weatherMatMod(weatherMatMod<B_L) = B_L;
 weatherMatMod(weatherMatMod>B_U) = 1;
+
+weatherMatInterped = griddedInterpolant(weatherMat(:,:,1)');
+xspace = 1:200;
+yspace = 1:200;
+[xgrid, ygrid] = meshgrid(xspace, yspace);
+
+z_values = weatherMatInterped(xgrid,ygrid);
+[grad_x, grad_y] = gradient(z_values, xspace, yspace);
+dwdx_ip = griddedInterpolant(grad_x');
+dwdy_ip = griddedInterpolant(grad_y');
 
 figure(88)
 subplot(1,2,1)
@@ -82,14 +92,14 @@ rtsim = 1;                   % [s] (50) time for the whole scenario
 dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
-simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
-scene = 3;       % Scenario selection
+simMode = uint8(2);          % 1: by time, 2: by target distance
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
+scene = 2;       % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
-useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
+useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
 
 % Starting location
 Xini = 0;
@@ -103,7 +113,7 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;        % Repulsive parameter (rho >= 0)
+rho0  = 10;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 Rg = 10;            % [m]  minimum allowed gap distance
 
@@ -215,15 +225,14 @@ for rt = 1:rtsim
     for L = 1:numLine
         
         loc_final = destin(L,:)';
-        
         %------------Global Path Optimization-------------
         if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMat, dwdx, dwdy);
+           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMatInterped, dwdx_ip, dwdy_ip);
         end
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy);
+        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMatInterped, dwdx_ip, dwdy_ip);
         timer(L) = toc;
 
     end

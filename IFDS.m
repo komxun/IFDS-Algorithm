@@ -28,93 +28,100 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
-                % --------------- Weather constraints ------------
-        
-              
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
-                if k~=0
-                    
-                    if (xx < 199) && (yy < 199)
-                        % Data Interpolating Method
-                        option = 'linear';
-                        
-                        omega = interp2(weatherMat(:,:,rt), xx+1, yy+101, option);
-                        dwdx_now = interp2(dwdx, xx+1, yy+101, option);
-                        dwdy_now = interp2(dwdy, xx+1, yy+101, option);
-                    else
-                        % Data Cutting method
-                        xid = min(round(xx)+1,200);
-                        yid = min(round(yy)+100+1,200);
-                        omega = weatherMat(yid, xid, rt);
-                        dwdx_now = dwdx(yid, xid);
-                        dwdy_now = dwdy(yid, xid);
-                    end
-                    
-%                     omega = weatherMat(xx+1, yy+101);
-%                     dwdx_now = dwdx(xx+1, yy+101);
-%                     dwdy_now = dwdy(xx+1, yy+101);
-
-                    for j = 1:Param.numObj
-                        Gm = Object(j).Gamma;
-                        dGdx = Object(j).n(1);
-                        dGdy = Object(j).n(2);
-                        dGdz = Object(j).n(3);
-                        dGx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-                            ( log((Gm-1)/k +1)/(B_L-B_U) * dwdx_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdx );
-                        
-                        dGy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-                            ( log((Gm-1)/k+1)/(B_L-B_U) * dwdy_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdy );
-                        
-%                             dGz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-%                                 ( -((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdz );
-                        dGz_p = dGdz;
-
-
-                        Object(j).Gamma = Object(j).Gamma - k* (exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) -1);
-
-                        Object(j).n = [dGx_p; dGy_p; dGz_p];
-                        Object(j).t = [dGy_p; -dGx_p; 0];
-                    end
-                end
-
-                [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                    Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
-              
-                
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
                     Paths{L,rt} = Wp;    % Save into cell array
                     break
                 else
+                    % --------------- Weather constraints ------------
+                    Object = create_scene(scene, Object, xx, yy, zz, rt);
+                    if k~=0
+                        omega = weatherMat(xx+1, yy+101);
+                        dwdx_now = dwdx(xx+1, yy+101);
+                        dwdy_now = dwdy(xx+1, yy+101);
+    
+                        for j = 1:Param.numObj
+                            Gm = Object(j).Gamma;
+                            dGdx = Object(j).n(1);
+                            dGdy = Object(j).n(2);
+                            dGdz = Object(j).n(3);
+                            dGx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( log((Gm-1)/k +1)/(B_L-B_U) * dwdx_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdx );
+                            
+                            dGy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( log((Gm-1)/k+1)/(B_L-B_U) * dwdy_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdy );
+                            
+                            dGz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( -((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdz );
+ 
+
+                            Object(j).Gamma = Object(j).Gamma - k* (exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) -1);
+    
+                            Object(j).n = [dGx_p; dGy_p; dGz_p];
+                            Object(j).t = [dGy_p; -dGx_p; 0];
+                        end
+                    end
+    
+                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                        Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
+
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
 
             end
 
         case 2 % simulate by reaching distance
-            disp("Simulating by distance until " + num2str(targetThresh) + " m error range")
+           
             t = 1;
-   
-            while norm([Wp(1,t) Wp(2,t) Wp(3,t)] - double([xd yd zd])) > targetThresh
-
+            while true
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
-                if n(xx,yy,zz)'*u(xx,yy,zz) < 0 || sf == 1
-        %             disp('case 1 activated')
-                    Wp(:,t+1) = Wp(:,t) + double(UBar(Wp(1,t), Wp(2,t), Wp(3,t))) * dt;
-        
-                elseif n(xx,yy,zz)'*u(xx,yy,zz) >= 0 && sf == 0
-        %             disp('case 2 activated')
-                    Wp(:,t+1) = Wp(:,t) + double(u(Wp(1,t), Wp(2,t), Wp(3,t))) * dt;
-                end  
+                if norm([xx yy zz] - [xd yd zd]) < targetThresh
+%                     disp('Target destination reached!')
+                    Wp = Wp(:,1:t);
+                    Paths{L,rt} = Wp;    % Save into cell array
+                    break
+                else
+                    % --------------- Weather constraints ------------
+                    Object = create_scene(scene, Object, xx, yy, zz, rt);
+                    if k~=0
+                        omega = weatherMat(xx+1, yy+101);
+                        dwdx_now = dwdx(xx+1, yy+101);
+                        dwdy_now = dwdy(xx+1, yy+101);
+    
+                        for j = 1:Param.numObj
+                            Gm = Object(j).Gamma;
+                            dGdx = Object(j).n(1);
+                            dGdy = Object(j).n(2);
+                            dGdz = Object(j).n(3);
+                            dGx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( log((Gm-1)/k +1)/(B_L-B_U) * dwdx_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdx );
+                            
+                            dGy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( log((Gm-1)/k+1)/(B_L-B_U) * dwdy_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdy );
+                            
+                            dGz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
+                                ( -((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdz );
+ 
+
+                            Object(j).Gamma = Object(j).Gamma - k* (exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) -1);
+    
+                            Object(j).n = [dGx_p; dGy_p; dGz_p];
+                            Object(j).t = [dGy_p; -dGx_p; 0];
+                        end
+                    end
+    
+                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                        Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
+
+                    Wp(:,t+1) = Wp(:,t) + UBar * dt;
+                end
                 t = t+1;
             end
-            % Removing extra space
-            Wp = Wp(:,1:t,:); 
-            disp('Target destination reached!')
+            
     end
 
     %======================= post-Calculation =============================
@@ -171,15 +178,15 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
             end
             % ---------------------------------------------------
             
-            if useOptimizer == 0
+%             if useOptimizer == 0
                 % Add Gap Constraint
                 Rstar = Obj(j).Rstar;
                 rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + delta_g)/Rstar)^2 + 1))) * rho0;
                 rho = rho0_star * exp(1 - 1/(dist_obj * dist));
-            else
-                % Without SafeGuard
-                rho = rho0 * exp(1 - 1/(dist_obj * dist));
-            end
+%             else
+%                 % Without SafeGuard
+%                 rho = rho0 * exp(1 - 1/(dist_obj * dist));
+%             end
 
             sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
 
@@ -262,8 +269,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
 %             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-%             Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
-              Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
+            Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
+%               Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
 %             Obj(1) = create_cylinder(100, -30, 0, 25, 60, Obj(1));
 %             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
     
