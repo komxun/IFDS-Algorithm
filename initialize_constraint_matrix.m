@@ -1,21 +1,30 @@
 % load WeatherMat_0.mat   % 200 x 200 x (t=100) matrix
-load WeatherMat_3.mat   % Good! (ok for rt = 100!)
-% load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
+% load WeatherMat_3.mat   % Good! (ok for rt = 100!)
+load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
 % load WeatherMat_321.mat
 
+warning off
 weatherMatMod = weatherMat;
 weatherMatMod(weatherMatMod<B_L) = B_L;
 weatherMatMod(weatherMatMod>B_U) = 1;
 
-weatherMatInterped = griddedInterpolant(weatherMat(:,:,1)');
+
 xspace = 1:200;
 yspace = 1:200;
 [xgrid, ygrid] = meshgrid(xspace, yspace);
 
-z_values = weatherMatInterped(xgrid,ygrid);
-[grad_x, grad_y] = gradient(z_values, xspace, yspace);
-dwdx_ip = griddedInterpolant(grad_x');
-dwdy_ip = griddedInterpolant(grad_y');
+WMCell = cell(1,size(weatherMat,3));
+dwdxCell = cell(1,size(weatherMat,3));
+dwdyCell = cell(1,size(weatherMat,3));
+
+for j = 1:size(weatherMat,3)
+    WMCell{j} = griddedInterpolant(weatherMat(:,:,j)');
+    z_values = WMCell{j}(xgrid,ygrid);
+    [grad_x, grad_y] = gradient(z_values, xspace, yspace);
+    dwdxCell{j} = griddedInterpolant(grad_x');
+    dwdyCell{j} = griddedInterpolant(grad_y');
+end
+
 
 figure(88)
 subplot(1,2,1)

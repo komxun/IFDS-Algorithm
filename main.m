@@ -1,4 +1,5 @@
-%% Visualize the Weather
+%% Dynamic Autorouting - Komsun Tamanakijprasart (2023)
+% For Static Results
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
@@ -11,7 +12,7 @@ dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 3;      % Scenario selection
+scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -178,12 +179,12 @@ for rt = 1:rtsim
         loc_final = destin(L,:)';
         %------------Global Path Optimization-------------
         if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, weatherMatInterped, dwdx_ip, dwdy_ip);
+           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         end
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMatInterped, dwdx_ip, dwdy_ip);
+        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         timer(L) = toc;
 
     end
@@ -198,13 +199,13 @@ for rt = 1:rtsim
     hold off
         
 end
-%% =========================== Path Following =============================
-trajectory = zeros(3, length(Paths{1,:})-1);
+%% ======================== Path Following ================================
+trajectory = zeros(3, length(Paths{end})-1);
 trajectory(:,1) = [x_i; y_i; z_i];
 
 tuning = [kappa, delta, kd]; 
 i = 1;
-for j = 1:length(Paths{1,:})-1
+for j = 1:length(Paths{end})-1
 
     Wi = Paths{1}(:,j);
     Wf = Paths{1}(:,j+1);
@@ -244,7 +245,7 @@ xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 
 
 
-%% Plotting Results
+%% =======================Plotting Results=================================
 animation = 1;
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
@@ -252,9 +253,10 @@ syms omega(X,Y) wet(X,Y)
 
 
 figure(69)
-% set(gcf, 'Position', get(0, 'Screensize'));
+
 for rt = 1:rtsim
     figure(69)
+    set(gcf, 'Position', get(0, 'Screensize'));
     subplot(3,4,[1,2,5,6])
 %     subplot(2,2,1)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
@@ -328,7 +330,8 @@ if saveVid
     video_name = "Dynamic_Constraint_Matrix_" + num2str(12) + ".avi";
     % create the video writer with 1 fps
     writerObj = VideoWriter(video_name);
-    writerObj.FrameRate = 30;
+%     writerObj.FrameRate = 30;
+    writerObj.FrameRate = 2;
     % set the seconds per image
     % open the video writer
     open(writerObj);
