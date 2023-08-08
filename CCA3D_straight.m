@@ -1,6 +1,7 @@
-function [x_final, y_final, z_final, psi_final, gamma_final] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, tuning)
+function [x_final, y_final, z_final, psi_final, gamma_final, timeSpent] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, tuning)
 
 dt = 0.01;
+timeSpent = 0;
 animation = 0;
 %.. Time
 t(1) = 0 ;                 % Simulation Time [s]
@@ -176,6 +177,9 @@ check = 1;
         x_final   = x(i+1);
         y_final   = y(i+1);
         z_final   = z(i+1);
+
+        timeSpent = timeSpent + dt;
+        
         
         if animation
             ss = scatter(x(i),y(i), 'filled', 'MarkerFaceColor','blue');

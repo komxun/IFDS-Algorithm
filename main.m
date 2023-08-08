@@ -5,14 +5,15 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
+animation = 1;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 1;                   % [s] (50) time for the whole scenario 
+rtsim = 30;                   % [s] (50) time for the whole scenario 
 dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 1;      % Scenario selection
+scene = 2;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -63,8 +64,10 @@ switch ccaTuning
         kd = 0;
 end
 
+tuning = [kappa, delta, kd];
+
 % _______________________ UAV Parameters _________________________________
-C  = 30;             % [m/s] UAV cruising speed
+C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
@@ -170,6 +173,8 @@ Paths = cell(numLine,rtsim);
 
 %% ====================== Main Path-Planning Program ======================
 
+traj = cell(1,rtsim);
+
 for rt = 1:rtsim
     tic
     Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
@@ -185,82 +190,110 @@ for rt = 1:rtsim
         
         % Compute the IFDS Algorithm
         [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
-        timer(L) = toc;
+%         timer(L) = toc;
 
     end
 
-    disp("Average computed time = " + num2str(mean(timer)) + " s")
-    % Plotting the path
-    figure(70)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    title(num2str(rt,'time = %4.1f s')) 
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-    view(0,90)
-    hold off
+    % Compute Path Following Algorithm
+    trajectory = zeros(3, length(Paths{rt}));
+%     x_i = 0;
+%     y_i = -20;
+%     z_i = 0;
+%     psi_i = 0;
+%     gamma_i = 0;
+    trajectory(:,1) = [x_i; y_i; z_i];
+
+    i = 1;
+    dtcum = 0;
+    
+    for j = 1:length(Paths{rt})-1
+        if dtcum >= 1
+            break
+        end 
+        Wi = Paths{rt}(:,j);
+        Wf = Paths{rt}(:,j+1);
+    
+        path_vect = Wf - Wi;
+        a = path_vect(1);
+        b = path_vect(2);
+        c = path_vect(3);
         
-end
-%% ======================== Path Following ================================
-trajectory = zeros(3, length(Paths{end})-1);
-trajectory(:,1) = [x_i; y_i; z_i];
-
-tuning = [kappa, delta, kd]; 
-i = 1;
-for j = 1:length(Paths{end})-1
-
-    Wi = Paths{1}(:,j);
-    Wf = Paths{1}(:,j+1);
-
-    path_vect = Wf - Wi;
-    a = path_vect(1);
-    b = path_vect(2);
-    c = path_vect(3);
+        % Check if the waypoint is ahead of current position
+        if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
     
-    % Check if the waypoint is ahead of current position
-    if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
-
-        [x, y, z, psi, gamma] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
-        x_i = x(end);
-        y_i = y(end);
-        z_i = z(end);
-        psi_i = psi(end);
-        gamma_i = gamma(end);
-    
-        trajectory(:,i+1) = [x y z]';
-        i = i+1;
-    else
-        disp("skip waypoint #" + num2str(j)) 
+            [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
+            x_i = x(end);
+            y_i = y(end);
+            z_i = z(end);
+            psi_i = psi(end);
+            gamma_i = gamma(end);
+            dtcum = dtcum + timeSpent;
+        
+            trajectory(:,i+1) = [x y z]';
+            i = i+1;
+        else
+%             disp("skip waypoint #" + num2str(j)) 
+        end   
     end
-    
+    trajectory = trajectory(:,1:i);   % remove extra element
+    traj{rt} = trajectory;
+    timer(L) = toc;
+    disp("Average computed time = " + num2str(mean(timer)) + " s")
 
 end
-trajectory = trajectory(:,1:i);   % remove extra element
-figure(70)
-PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
-plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
-
-title(num2str(rt,'time = %4.1f s')) 
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-% view(0,90)
-
-
 
 
 %% =======================Plotting Results=================================
-animation = 1;
+
+for rt = 1:rtsim
+
+    % Plotting the path
+    figure(70)
+    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+    if rt>1
+        prevTraj = [traj{1:rt-1}];
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2)
+    end
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
+%     scatter3(trajectory(1,1), trajectory(2,1), trajectory(3,1),'>r', 'filled', 'LineWidth', 2, 'SizeData', 60)
+    title(num2str(rt,'time = %4.1f s')) 
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+%     view(0,90)
+    hold off
+
+end
+
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
 syms omega(X,Y) wet(X,Y)
 
 
 figure(69)
+if animation
+    simulate = 1:rtsim;
+else
+    simulate = rtsim;
+end
+for rt = simulate
+    if rt>1
+        prevTraj = [traj{1:rt-1}];
+    end
 
-for rt = 1:rtsim
     figure(69)
     set(gcf, 'Position', get(0, 'Screensize'));
-    subplot(3,4,[1,2,5,6])
-%     subplot(2,2,1)
+    subplot(7,2,[1 3 5 7])
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    if rt>1
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    end
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
+
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData',1)
@@ -270,10 +303,15 @@ for rt = 1:rtsim
     colormap turbo
     clim([0 1])
 
-    subplot(3,4,[3,4,7,8]);
-%     subplot(2,2,2)
+    subplot(7,2,[2 4 6 8]);
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    if rt>1
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    end
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData', 1)
@@ -285,10 +323,15 @@ for rt = 1:rtsim
     colorbar
     clim([0 1])
 
-    subplot(3,4,9:10)
-%     subplot(2,2,3)
+    subplot(7,2,[9 11 13])
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    if rt>1
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    end
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
@@ -297,10 +340,15 @@ for rt = 1:rtsim
     hold off
     clim([0 1])
 
-    subplot(3,4,11:12)
-%     subplot(2,2,4)
+    subplot(7,2,[10 12 14])
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'k', 'LineWidth', 1.2)
+    if rt>1
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    end
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
     [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
@@ -327,7 +375,8 @@ camlight
 
 
 if saveVid
-    video_name = "Dynamic_Constraint_Matrix_" + num2str(12) + ".avi";
+    video_name = "Result_scene_" + num2str(scene) + ".avi";
+    disp("Video saved: " + video_name);
     % create the video writer with 1 fps
     writerObj = VideoWriter(video_name);
 %     writerObj.FrameRate = 30;
