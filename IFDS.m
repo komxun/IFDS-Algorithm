@@ -1,4 +1,4 @@
-function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
+function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
 
     % Read the parameters
     simMode = Param.simMode;
@@ -19,6 +19,8 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
     xd = loc_final(1);
     yd = loc_final(2);
     zd = loc_final(3);
+
+    foundPath = 0;
 
     switch simMode
         case 1 % Simulate by time
@@ -79,10 +81,15 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
+                if t>1000
+                    break
+                end
+
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
                     Paths{L,rt} = Wp;    % Save into cell array
+                    foundPath = 1;
                     break
                 else
                     % --------------- Weather constraints ------------
@@ -116,7 +123,6 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
     
                     [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                         Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
-
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
                 t = t+1;
@@ -125,17 +131,21 @@ function [Paths, Object, totalLength] = IFDS(rho0, sigma0, loc_final, rt, Wp, Pa
     end
 
     %======================= post-Calculation =============================
-    waypoints = Paths{1,1}';         % Calculate pairwise distances between waypoints
-    differences = diff(waypoints);   % the differences between consecutive waypoints
-    squaredDistances = sum(differences.^2, 2); 
-    
-    % Calculate the total path length
-    totalLength = sum(sqrt(squaredDistances));
-    
-    % Display the total path length
-    if showDisp
-        fprintf('Total path length: %.2f m\n', totalLength);
-        fprintf('Total flight time: %.2f s\n', totalLength/C);
+    if foundPath == 1
+        waypoints = Paths{1,1}';         % Calculate pairwise distances between waypoints
+        differences = diff(waypoints);   % the differences between consecutive waypoints
+        squaredDistances = sum(differences.^2, 2); 
+        
+        % Calculate the total path length
+        totalLength = sum(sqrt(squaredDistances));
+        
+        % Display the total path length
+        if showDisp
+            fprintf('Total path length: %.2f m\n', totalLength);
+            fprintf('Total flight time: %.2f s\n', totalLength/C);
+        end
+    else
+        totalLength = 0;
     end
 
 end

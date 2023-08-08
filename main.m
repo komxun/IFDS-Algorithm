@@ -4,16 +4,16 @@ clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
-saveVid = 0;
+saveVid = 1;
 animation = 1;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 30;                   % [s] (50) time for the whole scenario 
+rtsim = 50;                   % [s] (50) time for the whole scenario 
 dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 69;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -33,7 +33,7 @@ sigma0 = 0.01;      % Tangential parameter
 % The algorihtm still doesnt work for overlapped objects
 
 % _________________Constraint Matrix Tuning Paramters______________________
-B_U = 1;   % [B_L < B_U <= 1]
+B_U = 0.9;   % [B_L < B_U <= 1]
 B_L = 0;   % [0 < B_L < B_U]
 
 % Good: k=1 | B_u=0.7 | B_L = 0
@@ -174,10 +174,15 @@ Paths = cell(numLine,rtsim);
 %% ====================== Main Path-Planning Program ======================
 
 traj = cell(1,rtsim);
+traj{1} = [x_i, y_i, z_i];
 
 for rt = 1:rtsim
     tic
-    Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
+    Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
+
+    if isempty(traj{rt})
+        traj{rt} = traj{rt-1}(:,end);
+    end
 
     for L = 1:numLine
         
@@ -189,9 +194,15 @@ for rt = 1:rtsim
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+        [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
 %         timer(L) = toc;
 
+    end
+
+    if foundPath ~= 1
+        disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
+        disp("*UAV is standing by*")
+        continue
     end
 
     % Compute Path Following Algorithm
@@ -240,37 +251,96 @@ for rt = 1:rtsim
     timer(L) = toc;
     disp("Average computed time = " + num2str(mean(timer)) + " s")
 
+
 end
 
 
 %% =======================Plotting Results=================================
 
 for rt = 1:rtsim
-
+    
     % Plotting the path
     figure(70)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
-    if rt>1
-        prevTraj = [traj{1:rt-1}];
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2)
-    end
+    set(gcf, 'Position', get(0, 'Screensize'));
+    subplot(1,2,1)
+
     quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
         traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
         traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
         'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
-%     scatter3(trajectory(1,1), trajectory(2,1), trajectory(3,1),'>r', 'filled', 'LineWidth', 2, 'SizeData', 60)
+
+    hold on, grid on, axis equal
+
+    if ~isempty(Paths{rt})
+        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    end
+    if rt>1
+        prevTraj = [traj{1:rt-1}];
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2) 
+    end
+
+    scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+    
+    if k~=0
+        set(gca, 'YDir', 'normal')
+        colormap turbo
+        contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+        contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    end
+    
+    xlim([0 200]), ylim([-100 100]), zlim([0 100])
     title(num2str(rt,'time = %4.1f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
 %     view(0,90)
     hold off
 
-end
+    subplot(1,2,2)
 
+    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
+
+    hold on, grid on, axis equal
+
+    if ~isempty(Paths{rt})
+        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    end
+    if rt>1
+        prevTraj = [traj{1:rt-1}];
+        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2)
+        
+    end
+
+    scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+    
+    if k~=0
+        set(gca, 'YDir', 'normal')
+        colormap turbo
+        contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+        [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+        clabel(C2,h2,'FontSize',15,'Color','w')
+    end
+
+    
+    xlim([0 200])
+    ylim([-100 100])
+    zlim([0 100])
+    
+    title(num2str(rt,'time = %4.1f s')) 
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
+    view(0,90)
+    hold off
+%     pause(0.1)
+
+end
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
 syms omega(X,Y) wet(X,Y)
 
-
+%%
 figure(69)
 if animation
     simulate = 1:rtsim;
@@ -285,77 +355,37 @@ for rt = simulate
     figure(69)
     set(gcf, 'Position', get(0, 'Screensize'));
     subplot(7,2,[1 3 5 7])
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if rt>1
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    plotting_everything
+    
+    if k~=0
+        hold on
+        set(gca, 'YDir', 'normal')
+        colormap turbo
+        contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+        [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+        hold off
     end
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
-
-    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData',1)
-    grid minor
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
-    hold off
-    colormap turbo
-    clim([0 1])
 
     subplot(7,2,[2 4 6 8]);
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if rt>1
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
+    plotting_everything
+    if k~=0
+        hold on
+        set(gca, 'YDir', 'normal')
+        colormap turbo
+        contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+        [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+        clabel(C2,h2,'FontSize',15,'Color','w')
+        hold off
     end
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
-    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData', 1)
-    grid minor
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
     view(0,90)
-    hold off
-    colormap turbo
-    colorbar
-    clim([0 1])
 
     subplot(7,2,[9 11 13])
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if rt>1
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
-    end
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
-    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
+    plotting_everything
     view(90,0)
-    hold off
-    clim([0 1])
 
     subplot(7,2,[10 12 14])
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if rt>1
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.5)
-    end
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ob','filled', 'LineWidth', 2.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 15, 'MarkerFaceColor','w','ShowArrowHead','on')
-    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
+    plotting_everything
     view(0,0)
-    hold off
-    clim([0 1])
 
     sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...
         "Constraint Matrix, k = " + num2str(k) +  ", B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U)], 'FontSize', fontSize+2);
@@ -607,38 +637,38 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     end
 end
 
-function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
-    for j = 1:size(Object,2)
-        x0 = Object(j).origin(rt, 1);
-        y0 = Object(j).origin(rt, 2);
-        z0 = Object(j).origin(rt, 3);
-        a = Object(j).a;
-        b = Object(j).b;
-        c = Object(j).c;
-        p = Object(j).p;
-        q = Object(j).q;
-        r = Object(j).r;
-
-        Rstar = Object(j).Rstar;
-    
-        Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-        Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
-
-%         if rtsim > 1
-%             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
-%             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-%         else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',0.9,'MeshDensity',80), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-%         end
-%         colormap pink
-
-        xlim([0 200])
-        ylim([-100 100])
-        zlim([0 100])
-    end
-
-end
+% function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
+%     for j = 1:size(Object,2)
+%         x0 = Object(j).origin(rt, 1);
+%         y0 = Object(j).origin(rt, 2);
+%         z0 = Object(j).origin(rt, 3);
+%         a = Object(j).a;
+%         b = Object(j).b;
+%         c = Object(j).c;
+%         p = Object(j).p;
+%         q = Object(j).q;
+%         r = Object(j).r;
+% 
+%         Rstar = Object(j).Rstar;
+%     
+%         Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
+%         Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
+% 
+% %         if rtsim > 1
+% %             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
+% %             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
+% %         else
+%             fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',0.9,'MeshDensity',80), hold on
+%             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
+% %         end
+% %         colormap pink
+% 
+%         xlim([0 200])
+%         ylim([-100 100])
+%         zlim([0 100])
+%     end
+% 
+% end
 
 function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     if multiTarget
@@ -664,7 +694,8 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     else
         plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
-        hold on, grid on, grid minor, axis equal
+        hold on
+%         axis equal, grid on, grid minor
         scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     end
