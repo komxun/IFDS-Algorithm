@@ -4,36 +4,36 @@ clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
-saveVid = 1;
-animation = 1;              % Figure(69)m 1: see the simulation
+saveVid = 0;
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 50;                   % [s] (50) time for the whole scenario 
+rtsim = 1;                   % [s] (50) time for the whole scenario 
 dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 69;      % Scenario selection
+scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 10;            % [m]  minimum allowed gap distance
+delta_g = 0;            % [m]  minimum allowed gap distance
 k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;          % Repulsive parameter (rho >= 0)
+rho0  = 1.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
 
 % _________________Constraint Matrix Tuning Paramters______________________
-B_U = 0.9;   % [B_L < B_U <= 1]
+B_U = 0.8;   % [B_L < B_U <= 1]
 B_L = 0;   % [0 < B_L < B_U]
 
 % Good: k=1 | B_u=0.7 | B_L = 0
@@ -77,11 +77,13 @@ Zini = 0;
 Xfinal = 200;
 Yfinal = 0;
 Zfinal = 10;
+% Zfinal = 50;
 
 % UAV's Initial State
 x_i = 0;
 y_i = -20;
-z_i = 0;
+% y_i = 0;
+z_i = 5;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
@@ -129,9 +131,10 @@ switch scene
     case 5, numObj = 3;
     case 7, numObj = 7;
     case 12, numObj = 12;
-    case 41, numObj = 1;
+    case 41, numObj = 3;
     case 42, numObj = 4;
     case 69, numObj = 4;
+    case 6969, numObj = 3;
 end
 Param.numObj = numObj;
 Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
@@ -165,7 +168,7 @@ end
 numLine = size(destin,1);
 disp("Generating paths for " + num2str(numLine) + " destinations . . .")
 disp("*Timer started*")
-timer = zeros(1,numLine);
+timer = zeros(1,rtsim);
 
 % Pre-allocate waypoints and path
 Wp = zeros(3, tsim+1);
@@ -175,10 +178,22 @@ Paths = cell(numLine,rtsim);
 
 traj = cell(1,rtsim);
 traj{1} = [x_i, y_i, z_i];
+errn = cell(1,rtsim);
 
 for rt = 1:rtsim
+    err = [];
     tic
-    Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
+    if norm([x_i y_i z_i] - [Xfinal Yfinal Zfinal]) < targetThresh  % [m]
+        disp("Target destination reached at t = " + num2str(rt) + " s")
+        traj = traj(~cellfun('isempty',traj));
+        break
+    end
+                
+    if scene == 41 || scene == 42 || k~=0
+        Wp(:,1) = [x_i; y_i; z_i];
+    else
+        Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
+    end
 
     if isempty(traj{rt})
         traj{rt} = traj{rt-1}(:,end);
@@ -195,11 +210,12 @@ for rt = 1:rtsim
         
         % Compute the IFDS Algorithm
         [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+%         [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
 %         timer(L) = toc;
 
     end
 
-    if foundPath ~= 1
+    if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
         disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
         disp("*UAV is standing by*")
         continue
@@ -207,11 +223,6 @@ for rt = 1:rtsim
 
     % Compute Path Following Algorithm
     trajectory = zeros(3, length(Paths{rt}));
-%     x_i = 0;
-%     y_i = -20;
-%     z_i = 0;
-%     psi_i = 0;
-%     gamma_i = 0;
     trajectory(:,1) = [x_i; y_i; z_i];
 
     i = 1;
@@ -231,7 +242,8 @@ for rt = 1:rtsim
         
         % Check if the waypoint is ahead of current position
         if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
-    
+            
+            err = [err, norm([x_i-Wf(1), y_i-Wf(2), z_i-Wf(3)])];
             [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
             x_i = x(end);
             y_i = y(end);
@@ -239,25 +251,40 @@ for rt = 1:rtsim
             psi_i = psi(end);
             gamma_i = gamma(end);
             dtcum = dtcum + timeSpent;
-        
+          
             trajectory(:,i+1) = [x y z]';
             i = i+1;
         else
 %             disp("skip waypoint #" + num2str(j)) 
         end   
     end
+    errn{rt} = err;
     trajectory = trajectory(:,1:i);   % remove extra element
     traj{rt} = trajectory;
-    timer(L) = toc;
-    disp("Average computed time = " + num2str(mean(timer)) + " s")
-
+    timer(rt) = toc;
+    disp("Computed time = " + num2str((timer(rt))) + " s")
 
 end
 
+% timer(timer==0)=[];
+disp("Average computed time = " + num2str(mean(timer(timer~=0))) + " s")
 
+
+%% CCA3D Error Analysis - For static path only!!
+errn = errn(~cellfun('isempty',errn));
+figure(91)
+for j = 1:length(errn)
+    if mod(j,2) == 0
+        styl = 'o-k';
+    else
+        styl = 'o-b';
+    end
+    plot(linspace(j-1,j,size(errn{j},2)), errn{j}, styl, 'LineWidth', 1), hold on
+end
+grid on, grid minor
 %% =======================Plotting Results=================================
 
-for rt = 1:rtsim
+for rt = 1:size(traj,2)
     
     % Plotting the path
     figure(70)
@@ -320,6 +347,7 @@ for rt = 1:rtsim
         colormap turbo
         contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+        
         clabel(C2,h2,'FontSize',15,'Color','w')
     end
 
@@ -343,9 +371,9 @@ syms omega(X,Y) wet(X,Y)
 %%
 figure(69)
 if animation
-    simulate = 1:rtsim;
+    simulate = 1:size(traj,2);
 else
-    simulate = rtsim;
+    simulate = size(traj,2);
 end
 for rt = simulate
     if rt>1
@@ -363,6 +391,8 @@ for rt = simulate
         colormap turbo
         contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+%         contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
+%         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         hold off
     end
 
@@ -374,7 +404,11 @@ for rt = simulate
         colormap turbo
         contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+%         contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
+%         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+
         clabel(C2,h2,'FontSize',15,'Color','w')
+        colorbar
         hold off
     end
     view(0,90)
@@ -387,9 +421,18 @@ for rt = simulate
     plotting_everything
     view(0,0)
 
+%     if rt>1
+%         legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory")
+%     else
+%         legend([pltDestin, pltPath], "Destination", "IFDS Path")
+%     end
+
+    if k ~=0
     sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...
         "Constraint Matrix, k = " + num2str(k) +  ", B_L = " + num2str(B_L) + ", B_U = " + num2str(B_U)], 'FontSize', fontSize+2);
-
+    else
+    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')],'FontSize', fontSize+2);
+    end
     % Video saving
     if saveVid
         frm(rt) = getframe(gcf) ;
@@ -405,7 +448,12 @@ camlight
 
 
 if saveVid
-    video_name = "Result_scene_" + num2str(scene) + ".avi";
+    if k~=0
+        text = "_weather";
+    else
+        text = "";
+    end
+    video_name = "Result_scene_" + num2str(scene) + text + ".avi";
     disp("Video saved: " + video_name);
     % create the video writer with 1 fps
     writerObj = VideoWriter(video_name);
@@ -440,7 +488,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     lower_bound_rho = 0.05;  % <0.05 issue started to occur
     lower_bound_sigma = 0;
     
-    upper_bound_rho = 2;
+    upper_bound_rho = 2.5;
     upper_bound_sigma = 1;
     
     % Set up the optimization problem
@@ -538,7 +586,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     ylim([-100 100])
     zlim([0 100])
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize+2)
 
     subplot(2,3,2)
     colormap(flipud(turbo))
@@ -550,7 +598,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     title("Original \Gamma - Top view (Z = " + num2str(zfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
     colorbar
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize+2)
 
     sp3 = subplot(2,3,3);
     set(gca, 'YDir', 'normal')
@@ -562,7 +610,7 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     xlabel('X [m]'), ylabel('Y [m]')
     title("Original Constraint Matrix");
     grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize+2)
     colormap(sp3,turbo)
     colorbar
    
@@ -574,9 +622,9 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
 %     clim([0 max_Gamm])
     clabel(C3,h3,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Y [m]')
-    title("\Gamma_c - Top view (Z = " + num2str(zfixed) + ")");
+    title("\Gamma_p - Top view (Z = " + num2str(zfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize+2)
     
     % Plot the Y-Z plane distribution
     subplot(2,3,5)
@@ -587,9 +635,9 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
 %     clim([0 max_Gamm])
     clabel(C4,h4,'FontSize',15,'Color','w')
     xlabel('Y [m]'), ylabel('Z [m]')
-    title("\Gamma_c - Front view (X = " + num2str(xfixed) + ")");
+    title("\Gamma_p - Front view (X = " + num2str(xfixed) + ")");
     grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize, 'XDir', 'reverse')
+    set(gca, 'FontSize', fontSize+2, 'XDir', 'reverse')
     
     
     % Plot the X-Z plane distribution
@@ -601,13 +649,13 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
 %     clim([0 max_Gamm])
     clabel(C5,h5,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Z [m]');
-    title("\Gamma_c - Side view (Y = " + num2str(yfixed) +")");
+    title("\Gamma_p - Side view (Y = " + num2str(yfixed) +")");
     grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize)
+    set(gca, 'FontSize', fontSize+2)
     
     colormap(sp1, pink)
-    sgt = sgtitle('Distribution of \Gamma(X, Y, Z)');
-    sgt.FontSize = fontSize + 2;
+    sgt = sgtitle('Distribution of the boundary function');
+    sgt.FontSize = fontSize + 10;
 
     function gam = Gamma_numeric_mod(X,Y,Z)
         gam = Gamma_numeric(X,Y,Z);

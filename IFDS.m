@@ -84,7 +84,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                 if t>1000
                     break
                 end
-
+                Object = create_scene(scene, Object, xx, yy, zz, rt);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
@@ -93,7 +93,6 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                     break
                 else
                     % --------------- Weather constraints ------------
-                    Object = create_scene(scene, Object, xx, yy, zz, rt);
                     if k~=0
                         omega = weatherMat(xx+1, yy+101);
                         dwdx_now = dwdx(xx+1, yy+101);
@@ -278,11 +277,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
 
         case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-%             Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_sphere(100, 80, 0, 50, Obj(1));
-%               Obj(1) = create_sphere(150, -50, 0, 50, Obj(1));
-%             Obj(1) = create_cylinder(100, -30, 0, 25, 60, Obj(1));
-%             Obj(1) = create_pipe(100, 5, 0, 25, 60, Obj(1));
+            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+%             Obj(1) = create_sphere(100, 180, 0, 50, Obj(1));
+
     
         case 2 % 2 objects
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
@@ -294,16 +291,16 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         case 3 % 3 objects
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
             Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
-            Obj(3) = create_pipe(168, 0, 0, 25, 80, Obj(3));
+            Obj(3) = create_cone(168, 0, 0, 25, 80, Obj(3));
 
         case 4 % single(complex) object
             Obj(1) = create_cylinder(100, 5, 0, 25, 200, Obj(1));
             Obj(2) = create_pipe(60, 20, 60, 80, 5, Obj(2));
             Obj(3) = create_pipe(130, -30, 30, 100, 50, Obj(3));
         case 5
-            Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
-            Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
-            Obj(3) = create_ceiling(100, 0, 100, 200, 1, Obj(3));
+            Obj(1) = create_cylinder(50, -20, 0, 30, 50, Obj(1));
+            Obj(2) = create_cone(100, -20, 0, 30, 50, Obj(2));
+            Obj(3) = create_pipe(150, -20, 0, 30, 50, Obj(3));
     
         case 12 % 12 objects
             Obj(1) = create_cylinder(100, 5, 0, 30, 50, Obj(1));
@@ -327,22 +324,30 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
             Obj(6) = create_cone(75,-75, -10, 150, 40, Obj(6));
             Obj(7) = create_cylinder(170, -6, 0, 34, 100, Obj(7));
         case 41
-            Oy = -80 + 2*single(rt);
-            Obj(1) = create_cylinder(100, Oy, 0, 50, 80, Obj(1));
+%             Oy = -50 + 2*single(rt);
+%             Ox = 90 - 2*single(rt);
+            Obj(1) = create_cylinder(100 + 50*sin(rt/8), 0 + 50*cos(rt/8), 0, 20, 80, Obj(1));
+            Obj(2) = create_sphere(100, 0, 0, 30, Obj(2));
+            Obj(3) = create_cylinder(100 - 50*sin(rt/8), 0 - 50*cos(rt/8), 0, 20, 50, Obj(3));
+
         case 42
-            Oy1 = 0 + 50*sin(0.2*single(rt));
-            Oy2 = -20 - 20*sin(0.5*single(rt));
-            Oz2 =  40 + 20*cos(0.5*single(rt));
+            Oy1 = -5 + 60*cos(0.4*single(rt));
+            Oy2 = -20 - 20*sin(0.8*single(rt));
+            Oz2 =  60 + 20*cos(0.8*single(rt));
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
             Obj(2) = create_cylinder(110, -10, 0, 25, 80,Obj(2));
             Obj(3) = create_cylinder(80, Oy1, 0, 20, 60, Obj(3));
             Obj(4) = create_sphere(160, Oy2, Oz2, 30, Obj(4));
     
-        case 69 %pp
+        case 69 
             Obj(1) = create_cylinder(100, 5, 0, 30, 80, Obj(1));
             Obj(2) = create_sphere(100, 30, 0, 40, Obj(2));
             Obj(3) = create_sphere(100, -20, 0, 40, Obj(3));
             Obj(4) = create_sphere(100, 5, 80, 30, Obj(4));
+        case 6969
+            Obj(1) = create_sphere(100 + 30*sin(rt/8), 0 + 30*cos(rt/8), 0, 40, Obj(1));
+            Obj(2) = create_cylinder(100, 0, 0, 40, 80, Obj(2));
+            Obj(3) = create_sphere(100 - 30*sin(rt/8), 0 - 30*cos(rt/8), 0, 40, Obj(3));
     end
 
     function Obj = create_sphere(x0, y0, z0, D, Obj)
