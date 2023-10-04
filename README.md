@@ -5,6 +5,8 @@ Results Video: https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK
 - [x] Constraints matrix has been introduced (e.g. Weather data)
 - [x] Path following and UAV dynamics have been introduced
 - [x] Evaluation methods are considered (e.g. real-time performance)
+- [x] Added Position-Holding feature
+- [x] Added Global vs Local path adaptability based on scenarios  
 
 # Not finished
 - [ ] Fuel consumption and flight time cost not considered
