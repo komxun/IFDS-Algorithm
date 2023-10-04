@@ -38,7 +38,7 @@ xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 set(gca, 'LineWidth', 2, 'FontSize', fontSize-8)
 hold off
 colormap turbo
-clim([0 1])
+% clim([0 1])
 
 %% Functions
 function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)

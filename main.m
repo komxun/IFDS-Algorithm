@@ -5,7 +5,7 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 0;              % Figure(69)m 1: see the simulation
+animation = 1;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 1;                   % [s] (50) time for the whole scenario 
@@ -19,21 +19,21 @@ scene = 1;      % Scenario selection
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
-useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 0;            % [m]  minimum allowed gap distance
-k = 0.5;   % Higher(1000) = more effect from weather
+useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
+delta_g = 10;            % [m]  minimum allowed gap distance
+k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1.5;          % Repulsive parameter (rho >= 0)
+rho0  = 10;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
 
 % _________________Constraint Matrix Tuning Paramters______________________
-B_U = 0.8;   % [B_L < B_U <= 1]
+B_U = 0.9;   % [B_L < B_U <= 1]
 B_L = 0;   % [0 < B_L < B_U]
 
 % Good: k=1 | B_u=0.7 | B_L = 0
@@ -444,7 +444,6 @@ end
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
 % subtitle(['SF = ' num2str(sf)], 'FontSize', 24)
-camlight
 
 
 if saveVid
@@ -503,7 +502,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     problem.nonlcon = [];
     problem.solver = 'fmincon';  % specify the solver
     problem.options = optimoptions('fmincon', ...
-        'Algorithm', 'sqp', ...   % option2: sqp
+        'Algorithm', 'interior-point', ...   % option2: sqp
         'Display', 'off');
     
     % Call fmincon
