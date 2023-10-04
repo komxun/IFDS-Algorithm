@@ -1,11 +1,6 @@
 Version for IRP Dynamic Autorouting\
 Results Video: https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK
 
-
-
-[![IMAGE ALT TEXT](https://github.com/komxun/IFDS-Algorithm/assets/133139057/95057a97-ced1-4a40-a957-13613ec46b84)
-](https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK)
-
 # This version
 - [x] Constraints matrix has been introduced (e.g. Weather data)
 - [x] Path following and UAV dynamics have been introduced
@@ -26,7 +21,8 @@ Results Video: https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK
 - **Problem1**: Follow the literature to solve the overlapped problem
 - **Problem2**: Derive the barrier for the cylinder case, or even for the general case
 
-
+# Results
+![image](https://github.com/komxun/IFDS-Algorithm/assets/133139057/078c3a5d-717b-4cf6-a459-22dee9d5c450)
 
 
 
