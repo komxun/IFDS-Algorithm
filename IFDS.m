@@ -386,7 +386,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
     function Obj = create_cylinder(x0, y0, z0, D, h, Obj)
     
         a = D/2;   b = D/2;   c = h;    % Object's axis length
-        p = 1;     q = 1;     r = 5;  % Index parameters
+        p = 1;     q = 1;     r = 4;  % Index parameters
      
         % Object Shape Equation
         Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);

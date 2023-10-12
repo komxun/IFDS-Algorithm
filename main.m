@@ -5,28 +5,28 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 1;              % Figure(69)m 1: see the simulation
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 1;                   % [s] (50) time for the whole scenario 
+rtsim = 20;                   % [s] (50) time for the whole scenario 
 dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2.5;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 1;      % Scenario selection
+scene = 2;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
-useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 10;            % [m]  minimum allowed gap distance
+useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
+delta_g = 25;            % [m]  minimum allowed gap distance
 k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 10;          % Repulsive parameter (rho >= 0)
+rho0  = 1;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
