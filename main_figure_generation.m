@@ -9,7 +9,7 @@ dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = uint8(0);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
@@ -30,7 +30,7 @@ Zfinal = 10;
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 1;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
-Rg = 10;            % [m]  minimum allowed gap distance
+Rg = 0;            % [m]  minimum allowed gap distance
 
 x_guess = [rho0; sigma0];
 
@@ -117,84 +117,107 @@ Paths = cell(numLine,rtsim);
 
 %% ====================== Main Path-Planning Program ======================
 
-for rt = 1:rtsim
-    tic
-    Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
+rho0List = [0.5 1 2.5 5 10] ; 
+sigma0List = [0.01];
+figure(70)
 
-    for L = 1:numLine
+
+leg = [];
+for j = 1:length(rho0List)
+    rho0 = rho0List(j);
+%     Param.sigma0_initial = sigma0;
+    for k = 1:length(sigma0List)
+        sigma0 = sigma0List(k);
+
+        leg = [leg, "\rho_0 = " + num2str(rho0)];
+
+        for rt = 1:rtsim
+            tic
+            Wp(:,1,rt) = [Xini; Yini; Zini];  % can change this to current uav pos
         
-        loc_final = destin(L,:)';
+            for L = 1:numLine
+                
+                loc_final = destin(L,:)';
+                
+                %------------Global Path Optimization-------------
+                if useOptimizer == 1
+                   [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object);
+                end
+                %------------------------------------------------
+                
+                % Compute the IFDS Algorithm
+                [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object);
+                timer(L) = toc;
         
-        %------------Global Path Optimization-------------
-        if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object);
+            end
+        
+            disp("Average computed time = " + num2str(mean(timer)) + " s")
+            % Plotting the path
+            PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget), hold on
+            xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+                
         end
-        %------------------------------------------------
-        
-        % Compute the IFDS Algorithm
-        [Paths, Object, ~] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object);
-        timer(L) = toc;
-
     end
-
-    disp("Average computed time = " + num2str(mean(timer)) + " s")
-    % Plotting the path
-    figure(70)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    title(num2str(rt,'time = %4.1f s')) 
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-    view(0,90)
-        
 end
+
+syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) 
+PlotObject(Object, Rg, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
+legend([leg, "", ""])
+title("IFDS, \sigma_0 = " + num2str(sigma0))
+
+set(gca, "FontSize", 25, 'LineWidth', 1.5)
+
+
+
 % =========================================================================
 %% Plotting Results
 animation = 1;
 
-syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) 
 
 
-figure(69)
-% set(gcf, 'Position', get(0, 'Screensize'));
-for rt = 1:rtsim
-    figure(69)
-    subplot(2,2,1)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    hold off
 
-    subplot(2,2,2);
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(0,90)
-    hold off
-
-    subplot(2,2,3)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(90,0)
-    hold off
-
-    subplot(2,2,4);
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(0,0)
-    hold off
-
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
-        num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
-end
+% figure(69)
+% % set(gcf, 'Position', get(0, 'Screensize'));
+% for rt = 1:rtsim
+%     figure(69)
+%     subplot(2,2,1)
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2)
+%     hold off
+% 
+%     subplot(2,2,2);
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2)
+%     view(0,90)
+%     hold off
+% 
+%     subplot(2,2,3)
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2)
+%     view(90,0)
+%     hold off
+% 
+%     subplot(2,2,4);
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2)
+%     view(0,0)
+%     hold off
+% 
+%     sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
+%         num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
+% end
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
 %     'FontSize',26);
@@ -202,9 +225,6 @@ end
 % set(gca,'FontSize', fontSize)
 
 
-%% Plot Gamma Distribution
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8)
 
 %% ------------------------------Function---------------------------------
 
@@ -377,13 +397,14 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
         else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80, 'FaceColor','w'), hold on
             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
         end
-        colormap pink
-        xlim([0 200])
-        ylim([-100 100])
-        zlim([0 100])
+%         colormap pink
+        camlight
+%         xlim([0 200])
+        ylim([-60 60])
+%         zlim([0,40])
     end
 
 end
@@ -411,15 +432,15 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
         scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:), 'LineWidth', 2)
         hold on, grid on, grid minor, axis equal
-        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150)
+%         scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
+%         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150)
     end
 
-    xlim([0 200])
-    ylim([-100 100])
-    zlim([0 100])
+%     xlim([0 200])
+%     ylim([-100 100])
+%     zlim([0 100])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
 end
