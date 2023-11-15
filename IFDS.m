@@ -331,13 +331,23 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
             Obj(3) = create_cylinder(100 - 50*sin(rt/8), 0 - 50*cos(rt/8), 0, 20, 50, Obj(3));
 
         case 42
+            % Original
+%             Oy1 = -5 + 60*cos(0.4*single(rt));
+%             Oy2 = -20 - 20*sin(0.8*single(rt));
+%             Oz2 =  60 + 20*cos(0.8*single(rt));
+%             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
+%             Obj(2) = create_cylinder(110, -10, 0, 25, 80,Obj(2));
+%             Obj(3) = create_cylinder(80, Oy1, 0, 20, 60, Obj(3));
+%             Obj(4) = create_sphere(160, Oy2, Oz2, 30, Obj(4));
+
+            % New
             Oy1 = -5 + 60*cos(0.4*single(rt));
             Oy2 = -20 - 20*sin(0.8*single(rt));
             Oz2 =  60 + 20*cos(0.8*single(rt));
-            Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
-            Obj(2) = create_cylinder(110, -10, 0, 25, 80,Obj(2));
-            Obj(3) = create_cylinder(80, Oy1, 0, 20, 60, Obj(3));
-            Obj(4) = create_sphere(160, Oy2, Oz2, 30, Obj(4));
+            Obj(1) = create_cylinder(40, 5, 0, 30, 40, Obj(1));
+            Obj(2) = create_cone(120, -10, 0, 25, 80,Obj(2));
+            Obj(3) = create_cylinder(80, Oy1, 0, 10, 60, Obj(3));
+            Obj(4) = create_sphere(160, Oy2, Oz2, 20, Obj(4));
     
         case 69 
             Obj(1) = create_cylinder(100, 5, 0, 30, 80, Obj(1));

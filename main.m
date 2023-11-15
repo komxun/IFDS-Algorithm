@@ -8,25 +8,25 @@ saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 20;                   % [s] (50) time for the whole scenario 
+rtsim = 1;                   % [s] (50) time for the whole scenario 
 dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
-targetThresh = 2.5;          % [m] allowed error for final target distance 
+targetThresh = 1;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 25;            % [m]  minimum allowed gap distance
+delta_g = 10;            % [m]  minimum allowed gap distance
 k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;          % Repulsive parameter (rho >= 0)
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -76,8 +76,8 @@ Zini = 0;
 % Target Destination
 Xfinal = 200;
 Yfinal = 0;
-Zfinal = 10;
-% Zfinal = 50;
+% Zfinal = 10;
+Zfinal = 50;
 
 % UAV's Initial State
 x_i = 0;
@@ -411,6 +411,11 @@ for rt = simulate
         colorbar
         hold off
     end
+    if rt>1
+        legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory")
+    else
+        legend([pltDestin, pltPath], "Destination", "IFDS Path")
+    end
     view(0,90)
 
     subplot(7,2,[9 11 13])
@@ -421,11 +426,6 @@ for rt = simulate
     plotting_everything
     view(0,0)
 
-%     if rt>1
-%         legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory")
-%     else
-%         legend([pltDestin, pltPath], "Destination", "IFDS Path")
-%     end
 
     if k ~=0
     sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...

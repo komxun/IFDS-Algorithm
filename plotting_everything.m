@@ -37,7 +37,7 @@ xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 
 set(gca, 'LineWidth', 2, 'FontSize', fontSize-8)
 hold off
-colormap turbo
+% colormap turbo
 clim([0 1])
 
 %% Functions
@@ -62,8 +62,8 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 %             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
 %             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
 %         else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',100, 'FaceColor', 'w'), hold on
+            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',100, 'FaceColor', 'w')
 %         end
 
         xlim([0 200])
