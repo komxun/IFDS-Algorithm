@@ -217,8 +217,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
             Obj(3) = create_pipe(130, -30, 30, 100, 5, Obj(3));
     
         case 2 % 2 objects
-            Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));
-            Obj(2) = create_sphere(120, -10, 0, 50, Obj(2));
+            Obj(1) = create_cylinder(50+10, 5, 0, 40, 70, Obj(1));
+            Obj(2) = create_sphere(120+10, -10, 0, 60, Obj(2));
     
         case 3 % 3 objects
             Obj(1) = create_cylinder(60, 5, 0, 30, 50, Obj(1));

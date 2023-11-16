@@ -9,8 +9,8 @@ dt = 0.1;            % [s] simulation time step
 C  = 30;             % [m/s] UAV cruising speed
 targetThresh = 2.5;  % [m] allowed error for final target distance 
 simMode = uint8(1);          % 1: by time, 2: by target distance
-multiTarget = uint8(1);      % 1: multi-target 0: single-target
-scene = uint8(0);       % Scenario selection
+multiTarget = uint8(0);      % 1: multi-target 0: single-target
+scene = uint8(3);       % Scenario selection
                         % 0) 1 cone, 2) 1 complex object
                         % 7) non-urban 12) urban environment
 
@@ -157,43 +157,49 @@ figure(69)
 % set(gcf, 'Position', get(0, 'Screensize'));
 for rt = 1:rtsim
     figure(69)
-    subplot(2,2,1)
+
+%     subplot(2,2,1)
+%     subplot(3,3,1:6)
     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     grid minor
-    set(gca, 'LineWidth', 2)
+    set(gca, 'LineWidth', 2.5, 'FontSize', fontSize)
     hold off
 
-    subplot(2,2,2);
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(0,90)
-    hold off
+%     subplot(2,2,2);
+%     subplot(3,3,7)
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2.5, 'FontSize', fontSize)
+%     view(0,90)
+%     hold off
 
-    subplot(2,2,3)
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(90,0)
-    hold off
+%     subplot(2,2,3)
+% %     subplot(3,3,8)
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2.5, 'FontSize', fontSize)
+%     view(90,0)
+%     hold off
+% 
+%     subplot(2,2,4);
+% %     subplot(3,3,9)
+%     PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+%     [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+%     grid minor
+%     set(gca, 'LineWidth', 2.5, 'FontSize', fontSize)
+%     view(0,0)
+%     hold off
 
-    subplot(2,2,4);
-    PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-    grid minor
-    set(gca, 'LineWidth', 2)
-    view(0,0)
-    hold off
-
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
-        num2str(sf),', r_g = ', num2str(Rg), 'm, ', num2str(rt,'time = %4.1f s')], 'Fontsize', fontSize+2);
+    title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' ...
+        num2str(sf)], 'Fontsize', fontSize+4);
+    subtitle("Shape-following: Off")
 end
 
 % title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
@@ -377,13 +383,13 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
         else
-            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80, 'FaceColor', 'w'), hold on
+            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30, 'FaceColor', 'w')
         end
-        colormap pink
-        xlim([0 200])
-        ylim([-100 100])
-        zlim([0 100])
+%         colormap pink
+%         xlim([0 200])
+%         ylim([-100 100])
+%         zlim([0 100])
     end
 
 end
@@ -419,7 +425,7 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
 
     xlim([0 200])
     ylim([-100 100])
-    zlim([0 100])
+    zlim([0 70])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
 end
