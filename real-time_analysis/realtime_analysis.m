@@ -67,3 +67,15 @@ ylabel("Computed time (s)")
 title("Scenario no.5 : 2 static obstacles + 2 dynamic obstacles")
 set(gca, 'FontSize', 24, 'LineWidth', 2)
 
+xspace = 0:1:49;
+figure
+stem(xspace, t4*1000,'b','LineWidth', lw+0.7), hold on
+stem(xspace, t5*1000, 'r', 'LineWidth', lw)
+grid on, grid minor
+legend("Example 1 (1 static + 2 dynamic obstacles)", "Example 2 (2 static + 2 dynamic obstacles")
+xlim([0,25])
+xlabel("Elapsed simulation time (s)")
+ylabel("Computed time (ms)")
+% title("Computing time of the IFDS with safeguarding for avoiding dynamic and static obstacles")
+set(gca, 'FontSize', 24, 'LineWidth', 2)
+
