@@ -3,6 +3,7 @@
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
+mapSpan = 600;
 fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
@@ -13,7 +14,7 @@ dt = 0.1;                    % [s] simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -21,15 +22,15 @@ scene = 2;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
-env = "dynamic";    % "static" "dynamic"
+env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;      % Tangential parameter 
+sigma0 = 0.1;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -76,7 +77,7 @@ Yini = 0;
 Zini = 0;
 
 % Target Destination
-Xfinal = 200;
+Xfinal = mapSpan;
 Yfinal = 0;
 % Zfinal = 10;
 Zfinal = 50;
@@ -215,7 +216,7 @@ for rt = 1:rtsim
         if env == "dynamic"
             [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         elseif env == "static"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
+            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{1}, dwdxCell{1}, dwdyCell{1});
         end
 %         timer(L) = toc;
 
@@ -321,12 +322,12 @@ for rt = 1:size(traj,2)
             contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1), 30)
+            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         end
     end
     
-    xlim([0 200]), ylim([-100 100]), zlim([0 100])
+    xlim([0 mapSpan]), ylim([-mapSpan/2 mapSpan/2]), zlim([0 100])
     title(num2str(rt,'time = %4.1f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
@@ -361,16 +362,16 @@ for rt = 1:size(traj,2)
             contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1), 30)
+            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         end
         
         clabel(C2,h2,'FontSize',15,'Color','w')
     end
 
     
-    xlim([0 200])
-    ylim([-100 100])
+    xlim([0 mapSpan])
+    ylim([-mapSpan/2 mapSpan/2])
     zlim([0 100])
     
     title(num2str(rt,'time = %4.1f s')) 
@@ -411,8 +412,8 @@ for rt = simulate
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
             contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
+            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         end
         hold off
     end
@@ -429,8 +430,8 @@ for rt = simulate
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
             contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
+            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         end
         clabel(C2,h2,'FontSize',15,'Color','w')
         colorbar
@@ -507,7 +508,7 @@ end
 %% Plot Gamma Distribution
 
 figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
+PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L, mapSpan)
 
 
 %% ------------------------------Function---------------------------------
@@ -554,9 +555,9 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     
 end
 
-function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L)
-    xr = 0:1:200;
-    yr = -100:1:100;
+function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L, mapSpan)
+    xr = 0:1:mapSpan;
+    yr = -mapSpan/2:1:mapSpan/2;
 %     zr = 0:100;
     zr = 0:200;
     
@@ -614,8 +615,8 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     patch('Vertices', yz_vertices, 'Faces', faces, 'FaceColor', 'red', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
     patch('Vertices', xz_vertices, 'Faces', faces, 'FaceColor', 'green', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
     axis equal
-    xlim([0 200])
-    ylim([-100 100])
+    xlim([0 mapSpan])
+    ylim([-mapSpan/2 mapSpan/2])
     zlim([0 100])
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
     set(gca, 'FontSize', fontSize+2)
@@ -634,9 +635,9 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
 
     sp3 = subplot(2,3,3);
     set(gca, 'YDir', 'normal')
-    contourf(1:200,1:200, weatherMat(:,:,1), num_levels); 
+    contourf(1:mapSpan,1:mapSpan, weatherMat(:,:,1), num_levels); 
     hold on
-    [C2,h2] = contourf(1:200, 1:200, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,...
+    [C2,h2] = contourf(1:mapSpan, 1:mapSpan, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,...
         'LineColor', 'w', 'LineWidth', 2);
     clabel(C2,h2,'FontSize',15,'Color','w')
     xlabel('X [m]'), ylabel('Y [m]')
@@ -697,8 +698,8 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
             xid = round(X)+1;
             yid = round(Y)+100+1;
             
-            xid(xid>200) = 200;
-            yid(yid>200) = 200;
+            xid(xid>mapSpan) = mapSpan;
+            yid(yid>mapSpan) = mapSpan;
             omega = zeros(size(xid));
             
             for i = 1:size(xid,1)
@@ -780,9 +781,9 @@ function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     end
 
-    xlim([0 200])
-    ylim([-100 100])
-    zlim([0 100])
+    % xlim([0 mapSpan])
+    % ylim([-mapSpan/2 mapSpan/2])
+    % zlim([0 100])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
 end

@@ -279,7 +279,7 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
 
             % Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_sphere(100, 75, 0, 50, Obj(1));
+            Obj(1) = create_sphere(100, 100, 0, 50, Obj(1));
 
     
         case 2 % 2 objects

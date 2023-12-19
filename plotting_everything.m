@@ -15,7 +15,7 @@ pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
 
 % IFDS Path, if available
 if ~isempty(Paths{rt})
-    pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
+    pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget, mapSpan);
 end
 
 % Trail of the UAV trajectory
@@ -27,7 +27,7 @@ end
 
 
 % Obstacle
-[Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+[Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star, mapSpan);
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 
 % Constraint Matrix
@@ -41,7 +41,7 @@ hold off
 clim([0 1])
 
 %% Functions
-function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
+function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star, mapSpan)
     for j = 1:size(Object,2)
         x0 = Object(j).origin(rt, 1);
         y0 = Object(j).origin(rt, 2);
@@ -66,14 +66,14 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',100, 'FaceColor', 'w')
 %         end
 
-        xlim([0 200])
-        ylim([-100 100])
+        xlim([0 mapSpan])
+        ylim([-mapSpan/2 mapSpan/2])
         zlim([0 100])
     end
 
 end
 
-function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget, mapSpan)
     if multiTarget
         pltPath(1) = plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.8);
         hold on
@@ -103,8 +103,8 @@ function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     end
 
-    xlim([0 200])
-    ylim([-100 100])
+    xlim([0 mapSpan])
+    ylim([-mapSpan/2 mapSpan/2])
     zlim([0 100])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
