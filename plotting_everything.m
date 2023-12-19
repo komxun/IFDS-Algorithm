@@ -2,7 +2,8 @@
 % Destination
 pltDestin = scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5);
 
-hold on, grid on, axis equal
+hold on, grid on
+% axis equal
 
 % if animation
 pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
@@ -27,18 +28,19 @@ end
 
 
 % Obstacle
-[Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star, mapSpan);
+% [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star, mapSpan);
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 
 % Constraint Matrix
 % imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData',1)
 
-
+surf(xxx, yyy -mapSpan/2, double(elev), 'EdgeColor', 'none');
+camlight
 
 set(gca, 'LineWidth', 2, 'FontSize', fontSize-8)
 hold off
 % colormap turbo
-clim([0 1])
+% clim([0 1])
 
 %% Functions
 function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star, mapSpan)
@@ -68,7 +70,7 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 
         xlim([0 mapSpan])
         ylim([-mapSpan/2 mapSpan/2])
-        zlim([0 100])
+        % zlim([0 100])
     end
 
 end
@@ -105,7 +107,7 @@ function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget, ma
 
     xlim([0 mapSpan])
     ylim([-mapSpan/2 mapSpan/2])
-    zlim([0 100])
+    % zlim([0 100])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
 end

@@ -3,7 +3,7 @@
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
-mapSpan = 600;
+mapSpan = 2000;
 fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
@@ -29,8 +29,8 @@ env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 0.1;      % Tangential parameter 
+rho0  = 10;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -74,19 +74,19 @@ C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
-Zini = 0;
+Zini = 55;
 
 % Target Destination
 Xfinal = mapSpan;
-Yfinal = 0;
+Yfinal = 300;
 % Zfinal = 10;
-Zfinal = 50;
+Zfinal = 70;
 
 % UAV's Initial State
-x_i = 0;
+x_i = 10;
 y_i = -20;
 % y_i = 0;
-z_i = 5;
+z_i = 55;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
@@ -122,7 +122,6 @@ Param.useOptimizer = useOptimizer;
 Param.k = k;
 Param.B_U = B_U;
 Param.B_L = B_L;
-
 
 % Structure Pre-allocation for each scene
 switch scene
@@ -213,10 +212,11 @@ for rt = 1:rtsim
         %------------------------------------------------
         
         % Compute the IFDS Algorithm
+
         if env == "dynamic"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            [Paths, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         elseif env == "static"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{1}, dwdxCell{1}, dwdyCell{1});
+            [Paths, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, WMCell{1}, dwdxCell{1}, dwdyCell{1});
         end
 %         timer(L) = toc;
 
@@ -291,6 +291,7 @@ end
 grid on, grid minor
 %% =======================Plotting Results=================================
 
+if animation
 for rt = 1:size(traj,2)
     
     % Plotting the path
@@ -382,11 +383,18 @@ for rt = 1:size(traj,2)
 %     pause(0.1)
 
 end
+end
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
 syms omega(X,Y) wet(X,Y)
 
 %%
+
+% Create a grid of coordinates
+[rows, cols] = size(weatherMat);
+[xxx, yyy] = meshgrid(1:cols, 1:rows);
+
+
 figure(69)
 if animation
     simulate = 1:size(traj,2);
@@ -402,49 +410,53 @@ for rt = simulate
     set(gcf, 'Position', get(0, 'Screensize'));
     subplot(7,2,[1 3 5 7])
     plotting_everything
+   
     
-    if k~=0
-        hold on
-        set(gca, 'YDir', 'normal')
- 
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-        elseif env == "static"
-            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
-        hold off
-    end
+    % if k~=0
+    %     hold on
+    %     set(gca, 'YDir', 'normal')
+    % 
+    %     if env == "dynamic"
+    %         contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+    %         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    %         contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+    %     elseif env == "static"
+    %         contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
+    %         [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    %     end
+    %     hold off
+    % end
+
+    
     % set(gca, "FontSize", 18)
     subplot(7,2,[2 4 6 8]);
     plotting_everything
-    if k~=0
-        hold on
-        set(gca, 'YDir', 'normal')
-        % colormap(flipud(bone))
-        colormap turbo 
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-        elseif env == "static"
-            contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
-        clabel(C2,h2,'FontSize',15,'Color','w')
-        colorbar
-        hold off
-    end
-    if ~animation
-        if rt>1
-            legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-            % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-        else
-            legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
-        end
-    end
+
+    % if k~=0
+    %     hold on
+    %     set(gca, 'YDir', 'normal')
+    %     % colormap(flipud(bone))
+    %     colormap turbo 
+    %     if env == "dynamic"
+    %         contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+    %         [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    %         contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+    %     elseif env == "static"
+    %         contourf(1:mapSpan,-mapSpan/2:mapSpan/2-1,weatherMatMod(:,:,1),30,'LineStyle', '-')
+    %         [C2,h2] = contourf(1:mapSpan, -mapSpan/2:mapSpan/2-1, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    %     end
+    %     clabel(C2,h2,'FontSize',15,'Color','w')
+    %     colorbar
+    %     hold off
+    % end
+    % if ~animation
+    %     if rt>1
+    %         legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
+    %         % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
+    %     else
+    %         legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
+    %     end
+    % end
 
     view(0,90)
     % set(gca, "FontSize", 18)
@@ -507,8 +519,8 @@ end
 
 %% Plot Gamma Distribution
 
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L, mapSpan)
+% figure(96)
+% PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L, mapSpan)
 
 
 %% ------------------------------Function---------------------------------

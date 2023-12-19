@@ -1,4 +1,4 @@
-function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
+function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, ELM, dwdx, dwdy)
 
     % Read the parameters
     simMode = Param.simMode;
@@ -39,7 +39,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                     % --------------- Weather constraints ------------
                     Object = create_scene(scene, Object, xx, yy, zz, rt);
                     if k~=0
-                        omega = weatherMat(xx+1, yy+101);
+                        omega = ELM(xx+1, yy+101);
                         dwdx_now = dwdx(xx+1, yy+101);
                         dwdy_now = dwdy(xx+1, yy+101);
     
@@ -77,14 +77,16 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
            
             t = 1;
             while true
+  
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
-                if t>1000
-                    break
-                end
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
+                % if t>1000
+                %     break
+                % end
+
+                % Object = create_scene(scene, Object, xx, yy, zz, rt);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
@@ -93,35 +95,21 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                     break
                 else
                     % --------------- Weather constraints ------------
-                    if k~=0
-                        omega = weatherMat(xx+1, yy+101);
-                        dwdx_now = dwdx(xx+1, yy+101);
-                        dwdy_now = dwdy(xx+1, yy+101);
+                    Gm = zz - ELM(xx+1, yy+101) + 1;
+                    dGdx = dwdx(xx+1, yy+101);
+                    dGdy = dwdx(xx+1, yy+101);
+                    dGdz = 1;
     
-                        for j = 1:Param.numObj
-                            Gm = Object(j).Gamma;
-                            dGdx = Object(j).n(1);
-                            dGdy = Object(j).n(2);
-                            dGdz = Object(j).n(3);
-                            dGx_p = dGdx + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-                                ( log((Gm-1)/k +1)/(B_L-B_U) * dwdx_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdx );
-                            
-                            dGy_p = dGdy + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-                                ( log((Gm-1)/k+1)/(B_L-B_U) * dwdy_now - ((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdy );
-                            
-                            dGz_p = dGdz + k*exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) * ...
-                                ( -((B_L-omega)/((Gm-1+k)*(B_L - B_U))) *dGdz );
- 
+                    nn = [dGdx; dGdy; dGdz];
+                    tt = [dGdy; -dGdx; 0];
 
-                            Object(j).Gamma = Object(j).Gamma - k* (exp( (B_L - omega)/(B_L - B_U) * log((Gm-1)/k +1) ) -1);
-    
-                            Object(j).n = [dGx_p; dGy_p; dGz_p];
-                            Object(j).t = [dGy_p; -dGx_p; 0];
-                        end
-                    end
+                    elm = struct;
+                    elm.Gamma = Gm;
+                    elm.n = nn;
+                    elm.t = tt;
     
                     [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
-                        Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
+                        elm, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
                 t = t+1;
@@ -149,58 +137,61 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
 
 end
 
-function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, delta_g, C, sf, time)
+function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, elm, rho0, sigma0, useOptimizer, delta_g, C, sf, time)
 
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
     u = -[C*(X - xd)/dist, C*(Y - yd)/dist, C*(Z - zd)/dist]';
     
     %% Pre-allocation
-    numObj = size(Obj,2);
+    numObj = size(elm,2);
     Mm = zeros(3);
     sum_w = 0;
 
     for j = 1:numObj
 
         % Reading Gamma for each object
-        Gamma = Obj(j).Gamma;
+        Gamma = elm(j).Gamma;
         
         % Unit normal vector and Unit tangential vector
-        n = Obj(j).n; 
-        t = Obj(j).t;
+        n = elm(j).n; 
+        t = elm(j).t;
     
         % Object Distance from UAV
-        x0 = Obj(j).origin(1);
-        y0 = Obj(j).origin(2);
-        z0 = Obj(j).origin(3);
+        % x0 = elm(j).origin(1);
+        % y0 = elm(j).origin(2);
+        % z0 = elm(j).origin(3);
 
-        dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
+        % dist_obj = sqrt((X - x0)^2 + (Y - y0)^2 + (Z - z0)^2);
 
         % Modular Matrix (Perturbation Matrix
         ntu = n' * u;
         if ntu < 0 || sf == 1
-            % ---- optimize the rho0, sigma0 for each object
-            if useOptimizer == 2
-                if mod(time,5)==0 % optimize every 5 waypoints
-                    [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0);
-                end
-            end
-            % ---------------------------------------------------
-            
-%             if useOptimizer == 0
-                % Add Gap Constraint
-                Rstar = Obj(j).Rstar;
-                rho0_star = log(abs(Gamma))/(log(abs(Gamma - ((Rstar + delta_g)/Rstar)^2 + 1))) * rho0;
-                rho = rho0_star * exp(1 - 1/(dist_obj * dist));
-%             else
-%                 % Without SafeGuard
-%                 rho = rho0 * exp(1 - 1/(dist_obj * dist));
-%             end
 
-            sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
+            % ---- optimize the rho0, sigma0 for each object
+            % if useOptimizer == 2
+            %     if mod(time,5)==0 % optimize every 5 waypoints
+            %         [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0);
+            %     end
+            % end
+            % ---------------------------------------------------
+            % rho = rho0 * exp(1 - 1/(dist_obj * dist));
+            % sigma = sigma0 * exp(1 - 1/(dist_obj * dist));
+            rho = rho0 * exp(1 - 1/(dist));
+            sigma = sigma0 * exp(1 - 1/(dist));
+
+
+            if norm(t) == 0
+                term2 = zeros(3);
+            else
+                term2 = t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));
+            end
+
+
+
 
             M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
-            + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
+            + term2;  % tao is removed for now
         elseif ntu >= 0 && sf == 0
             M = eye(3);
         end  
@@ -211,29 +202,28 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
             if i == j
                 continue
             else
-                w = w * (Obj(i).Gamma - 1)/...
-                    ((Obj(j).Gamma - 1) + (Obj(i).Gamma - 1));
+                w = w * (elm(i).Gamma - 1)/...
+                    ((elm(j).Gamma - 1) + (elm(i).Gamma - 1));
             end
         end
         sum_w = sum_w + w;
 
         % Saving to Field
-        Obj(j).n = n;
-        Obj(j).t = t;
-        Obj(j).dist = dist_obj;
+        elm(j).n = n;
+        elm(j).t = t;
+        % elm(j).dist = dist_obj;
 %         Obj(j).rho = rho;
 %         Obj(j).sigma = sigma;
-        Obj(j).M  = M;
-        Obj(j).w = w;
+        elm(j).M  = M;
+        elm(j).w = w;
     
     end
-
     for j = 1:numObj
-        Obj(j).w_tilde = Obj(j).w/sum_w;
-        Mm = Mm + Obj(j).w_tilde * Obj(j).M;
+        elm(j).w_tilde = elm(j).w/sum_w;
+        Mm = Mm + elm(j).w_tilde * elm(j).M;
     end
 
-    UBar = Mm*u;
+    UBar = M*u;
 
     function [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0)
     

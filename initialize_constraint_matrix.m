@@ -1,11 +1,11 @@
 % load WeatherMat_3.mat   % Good! (ok for rt = 100!)
 % load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
 % load WeatherMat_321.mat
-weatherMat = load("elev.mat");
-weatherMat = weatherMat.A;
-weatherMat = weatherMat(1:mapSpan, 1:mapSpan);
+s = load("elev.mat");
+elev = double(s.A);
+elev = elev(1:mapSpan, 1:mapSpan);
 
-weatherMat = (weatherMat - min(weatherMat(:))) ./ (max(weatherMat(:)) - min(weatherMat(:)));
+weatherMat = (elev - min(elev(:))) ./ (max(elev(:)) - min(elev(:)));
 
 warning off
 weatherMatMod = weatherMat;
@@ -66,12 +66,14 @@ Y = 1:mapSpan;
 Z = zeros(length(Y), length(X));
 
 % Compute the gradient of the matrix numerically
-dwdx = diff(weatherMat(:,:,1), 1, 2);
-dwdy = diff(weatherMat(:,:,1), 1, 1);
+dwdx = double(diff(weatherMat, 1, 2));
+dwdy = double(diff(weatherMat, 1, 1));
+% dwdz = diff(weatherMat, 1, 1);
 
 % Pad the gradient matrices to match the size of the original matrix
 dwdx = [dwdx, zeros(size(dwdx, 1), 1)];
 dwdy = [dwdy; zeros(1, size(dwdy, 2))];
+
 
 % Plot the gradient vectors
 [X_grid, Y_grid] = meshgrid(X, Y);
@@ -83,6 +85,7 @@ xlim([0, mapSpan]);
 % ylim([-100, 100]);
 xlabel('X');
 ylabel('Y');
+
 
 % Add a title
 title('Numerical Gradient of the Matrix');
