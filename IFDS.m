@@ -277,8 +277,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
 
         case 1  % Single object
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
-            Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-%             Obj(1) = create_sphere(100, 180, 0, 50, Obj(1));
+
+            % Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
+            Obj(1) = create_sphere(100, 75, 0, 50, Obj(1));
 
     
         case 2 % 2 objects
@@ -348,6 +349,17 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
             Obj(2) = create_cone(120, -10, 0, 25, 80,Obj(2));
             Obj(3) = create_cylinder(80, Oy1, 0, 10, 60, Obj(3));
             Obj(4) = create_sphere(160, Oy2, Oz2, 20, Obj(4));
+        case 44
+            Oy1 = 0 + 60*sin(0.7*single(rt));
+            Oy2 = 0 + 60*cos(0.7*single(rt));
+            shift = 40*sin(0.5*single(rt));
+            Obj(1) = create_cylinder(40, 5, 0, 30, 80, Obj(1));
+            Obj(2) = create_pipe(40, -50, 0, 50, 30, Obj(2));
+            Obj(3) = create_pipe(150, 50, 0, 40, 60, Obj(3));
+            Obj(4) = create_pipe(150,-10, 0, 40, 80, Obj(4));
+            Obj(5) = create_pipe(110, Oy1, 0, 20, 50, Obj(5));
+            Obj(6) = create_pipe(80, Oy2, 0, 30, 30, Obj(6));
+            Obj(7) = create_sphere(100 + shift, 0 + shift, 60, 30, Obj(7));
     
         case 69 
             Obj(1) = create_cylinder(100, 5, 0, 30, 80, Obj(1));

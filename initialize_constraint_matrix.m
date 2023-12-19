@@ -1,6 +1,6 @@
 % load WeatherMat_3.mat   % Good! (ok for rt = 100!)
-load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
-% load WeatherMat_321.mat
+% load WeatherMat_8187.mat   % Good for static plot (issue in rt>20)
+load WeatherMat_321.mat
 
 warning off
 weatherMatMod = weatherMat;
