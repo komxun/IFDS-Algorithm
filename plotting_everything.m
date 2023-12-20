@@ -2,7 +2,8 @@
 % Destination
 pltDestin = scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5);
 
-hold on, grid on, axis equal
+hold on, grid on
+axis equal
 
 % if animation
 pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
@@ -68,7 +69,7 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 
         xlim([0 mapSpan])
         ylim([-mapSpan/2 mapSpan/2])
-        zlim([0 100])
+        % zlim([0 100])
     end
 
 end
@@ -105,7 +106,7 @@ function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget, ma
 
     xlim([0 mapSpan])
     ylim([-mapSpan/2 mapSpan/2])
-    zlim([0 100])
+    % zlim([0 100])
 %     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 %     hold off
 end

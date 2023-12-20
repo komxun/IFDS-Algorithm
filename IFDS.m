@@ -81,9 +81,9 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
-                if t>1000
-                    break
-                end
+                % if t>1000
+                %     break
+                % end
                 Object = create_scene(scene, Object, xx, yy, zz, rt);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -279,7 +279,9 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
 
             % Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_sphere(100, 100, 0, 50, Obj(1));
+            % Obj(1) = create_sphere(100, 100, 0, 50, Obj(1));
+
+            Obj(1) = create_sphere(1000, 1000, 0, 1000, Obj(1));
 
     
         case 2 % 2 objects

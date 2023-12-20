@@ -3,7 +3,7 @@
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
-mapSpan = 600;
+mapSpan = 3500;
 fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
@@ -22,21 +22,21 @@ scene = 1;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0.5;   % Higher(1000) = more effect from weather
+k = 1e10;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 0.1;      % Tangential parameter 
+rho0  = 0.5;          % Repulsive parameter (rho >= 0)
+sigma0 = 10;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
 
 % _________________Constraint Matrix Tuning Paramters______________________
-B_U = 0.9;   % [B_L < B_U <= 1]
+B_U = 0.8;   % [B_L < B_U <= 1]
 B_L = 0;   % [0 < B_L < B_U]
 
 % Good: k=1 | B_u=0.7 | B_L = 0
@@ -72,21 +72,21 @@ tuning = [kappa, delta, kd];
 % _______________________ UAV Parameters _________________________________
 C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
-Xini = 0;
-Yini = 0;
-Zini = 0;
+Xini = 2000;
+Yini = -2000;
+Zini = 50;
 
 % Target Destination
-Xfinal = mapSpan;
-Yfinal = 0;
+Xfinal = 2000;
+Yfinal = mapSpan;
 % Zfinal = 10;
 Zfinal = 50;
 
 % UAV's Initial State
-x_i = 0;
-y_i = -20;
+x_i = Xini;
+y_i = Yini;
 % y_i = 0;
-z_i = 5;
+z_i = Zini;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
@@ -291,6 +291,7 @@ end
 grid on, grid minor
 %% =======================Plotting Results=================================
 
+if animation
 for rt = 1:size(traj,2)
     
     % Plotting the path
@@ -381,6 +382,7 @@ for rt = 1:size(traj,2)
     hold off
 %     pause(0.1)
 
+end
 end
 
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
@@ -507,9 +509,9 @@ end
 
 %% Plot Gamma Distribution
 
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L, mapSpan)
-
+% figure(96)
+% PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L, mapSpan)
+% 
 
 %% ------------------------------Function---------------------------------
 
