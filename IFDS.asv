@@ -97,7 +97,7 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
                     for iy = yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2
                         peakHeight = ELM(ix, iy);
                         if peakHeight > maxHeight && peakHeight > zz 
-                            maxPeakOrigin = [ix, iy, ELM(ix, iy)];
+                            maxPeakOrigin = [ix, iy - mapSpan/2, ELM(ix, iy)];
                             maxHeight = peakHeight;
                         end
                     end
@@ -121,10 +121,10 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
                     % dGdx = dwdx(xx+1, yy+101);
                     % dGdy = dwdy(xx+1, yy+101);
 
-                    Gm = zz - ELM(xx+1, yy+mapSpan/2+1) + 1;
-                    % Gm = 100*(  exp(5*(zz- ELM(xx+1, yy+mapSpan/2+1) -1))) +1;
-                    dGdx = -dwdx(xx+1, yy+mapSpan/2+1);
-                    dGdy = -dwdy(xx+1, yy+mapSpan/2+1);
+                    % Gm = zz - ELM(xx+1, yy+mapSpan/2+1) + 1;
+                    Gm = 2*(  exp(zz- ELM(xx+1, yy+mapSpan/2+1) -1)) +1;
+                    dGdx = dwdx(xx+1, yy+mapSpan/2+1);
+                    dGdy = dwdy(xx+1, yy+mapSpan/2+1);
 
                     dGdz = 1;
     
@@ -188,6 +188,8 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, elm, rho0, sigma
         % Object Distance from UAV
         dist_obj = 1;
         if ~isempty(maxPeakOrigin) == 1
+            
+            maxPeakOrigin
             x0 = maxPeakOrigin(1);
             y0 = maxPeakOrigin(2);
             z0 = maxPeakOrigin(3);

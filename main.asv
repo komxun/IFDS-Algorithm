@@ -30,7 +30,7 @@ env = "static";    % "static" "dynamic"
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+sigma0 = 100;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -72,21 +72,21 @@ tuning = [kappa, delta, kd];
 % _______________________ UAV Parameters _________________________________
 C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
-Xini = 1197;
-Yini = -443;
-Zini = 52;
+Xini = 478;
+Yini = -498;
+Zini = 50;
 
 % Target Destination
-Xfinal = 264;
-Yfinal = 596;
-Zfinal = 66;
+Xfinal = 1263;
+Yfinal = 635;
+Zfinal = 68;
 
 % UAV's Initial State
 x_i = Xini;
 y_i = Yini;
 % y_i = 0;
 z_i = Zini;
-psi_i = -pi;          % [rad] Initial Yaw angle
+psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
 

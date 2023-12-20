@@ -5,7 +5,10 @@ s = load("elev.mat");
 elev = double(s.A);
 elev = elev(1:mapSpan, 1:mapSpan);
 
-weatherMat = (elev - min(elev(:))) ./ (max(elev(:)) - min(elev(:)));
+% weatherMat = (elev - min(elev(:))) ./ (max(elev(:)) - min(elev(:)));
+
+weatherMat = elev;
+
 
 warning off
 weatherMatMod = weatherMat;
