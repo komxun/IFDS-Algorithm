@@ -12,8 +12,9 @@ weatherMat = elev;
 
 warning off
 weatherMatMod = weatherMat;
-weatherMatMod(weatherMatMod<B_L) = B_L;
-weatherMatMod(weatherMatMod>B_U) = 1;
+weatherMatMod(weatherMatMod<Zini) = 0;
+% weatherMatMod(weatherMatMod<B_L) = B_L;
+% weatherMatMod(weatherMatMod>B_U) = 1;
 
 
 xspace = 1:mapSpan;
@@ -25,7 +26,8 @@ dwdxCell = cell(1,size(weatherMat,3));
 dwdyCell = cell(1,size(weatherMat,3));
 
 for j = 1:size(weatherMat,3)
-    WMCell{j} = griddedInterpolant(weatherMat(:,:,j)');
+    % WMCell{j} = griddedInterpolant(weatherMat(:,:,j)');
+    WMCell{j} = griddedInterpolant(weatherMatMod(:,:,j)');
     z_values = WMCell{j}(xgrid,ygrid);
     [grad_x, grad_y] = gradient(z_values, xspace, yspace);
     dwdxCell{j} = griddedInterpolant(grad_x');

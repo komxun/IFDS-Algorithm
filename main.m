@@ -3,16 +3,16 @@
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
-mapSpan = 1500;
+mapSpan = 3000;
 fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 rtsim = 50;                   % [s] (50) time for the whole scenario 
-dt = 0.1;                    % [s] simulation time step
+dt = 1;                    % [s] (0.1) simulation time step
 simMode = uint8(2);          % 1: by time, 2: by target distance
-targetThresh = 1;          % [m] allowed error for final target distance 
+targetThresh = 10;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 

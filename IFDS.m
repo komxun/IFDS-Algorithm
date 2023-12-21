@@ -93,15 +93,17 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
                 % elevationsInRadius = extractElevations(ELM.Values, round(xx)+1, round(yy)+ mapSpan/2+1, dR);
                 maxHeight = 0;
                 maxPeakOrigin = [];
-                for ix = xx + 1 -dR/2 : xx + 1 +dR/2
-                    for iy = yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2
-                        peakHeight = ELM(ix, iy);
-                        if peakHeight > maxHeight && peakHeight > zz 
-                            maxPeakOrigin = [ix, iy, ELM(ix, iy)];
-                            maxHeight = peakHeight;
-                        end
-                    end
-                end
+
+                % % --------------Consider max peak as the object (increase computing time )----
+                % for ix = xx + 1 -dR/2 : xx + 1 +dR/2
+                %     for iy = yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2
+                %         peakHeight = ELM(ix, iy);
+                %         if peakHeight > maxHeight && peakHeight > zz 
+                %             maxPeakOrigin = [ix, iy, ELM(ix, iy)];
+                %             maxHeight = peakHeight;
+                %         end
+                %     end
+                % end
 
 
                 % elevInRadius = ELM( (xx + 1 -dR/2 : xx + 1 +dR/2),  (yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2)  );
