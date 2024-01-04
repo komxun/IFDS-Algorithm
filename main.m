@@ -8,9 +8,8 @@ saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-
-dt = 0.1;                    % [s] simulation time step
-dt_traj = 1;
+dt = 0.1;                    % [s] IFDS time step
+dt_traj = 1;                 % [s] Trajectory time step
 rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
