@@ -8,27 +8,29 @@ saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 40;                   % [s] (50) time for the whole scenario 
+
 dt = 0.1;                    % [s] simulation time step
+dt_traj = 0.01;
+rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 42;      % Scenario selection
+scene = 3;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 1;            % [m]  minimum allowed gap distance
-k = 0.5;   % Higher(1000) = more effect from weather
+delta_g = 10;            % [m]  minimum allowed gap distance
+k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1.5;          % Repulsive parameter (rho >= 0)
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -135,6 +137,7 @@ switch scene
     case 12, numObj = 12;
     case 41, numObj = 3;
     case 42, numObj = 4;
+    case 44, numObj = 7;
     case 69, numObj = 4;
     case 6969, numObj = 3;
 end
@@ -191,7 +194,7 @@ for rt = 1:rtsim
         break
     end
                 
-    if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic")
+    if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic") || scene == 44
         Wp(:,1) = [x_i; y_i; z_i];
     else
         Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
@@ -234,7 +237,7 @@ for rt = 1:rtsim
     dtcum = 0;
     
     for j = 1:length(Paths{rt})-1
-        if dtcum >= 1
+        if dtcum >= dt_traj
             break
         end 
         Wi = Paths{rt}(:,j);
@@ -326,7 +329,7 @@ for rt = 1:size(traj,2)
     end
     
     xlim([0 200]), ylim([-100 100]), zlim([0 100])
-    title(num2str(rt,'time = %4.1f s')) 
+    title(num2str(rt*dt_traj,'time = %4.2f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
 %     view(0,90)
@@ -372,7 +375,7 @@ for rt = 1:size(traj,2)
     ylim([-100 100])
     zlim([0 100])
     
-    title(num2str(rt,'time = %4.1f s')) 
+    title(num2str(rt*dt_traj,'time = %4.2f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
     view(0,90)
@@ -392,8 +395,7 @@ else
     simulate = size(traj,2);
 end
 for rt = simulate
-% for rt = 25
-    if rt>1
+    if rt>2
         prevTraj = [traj{1:rt-1}];
     end
 

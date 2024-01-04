@@ -8,12 +8,14 @@ saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
-rtsim = 50;                   % [s] (50) time for the whole scenario 
+
 dt = 0.1;                    % [s] simulation time step
+dt_traj = 1;
+rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 3;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -24,7 +26,7 @@ delta_g = 10;            % [m]  minimum allowed gap distance
 k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
-env = "dynamic";    % "static" "dynamic"
+env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
@@ -235,7 +237,7 @@ for rt = 1:rtsim
     dtcum = 0;
     
     for j = 1:length(Paths{rt})-1
-        if dtcum >= 1
+        if dtcum >= dt_traj
             break
         end 
         Wi = Paths{rt}(:,j);
@@ -327,7 +329,7 @@ for rt = 1:size(traj,2)
     end
     
     xlim([0 200]), ylim([-100 100]), zlim([0 100])
-    title(num2str(rt,'time = %4.1f s')) 
+    title(num2str(rt*dt_traj,'time = %4.2f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
 %     view(0,90)
@@ -373,7 +375,7 @@ for rt = 1:size(traj,2)
     ylim([-100 100])
     zlim([0 100])
     
-    title(num2str(rt,'time = %4.1f s')) 
+    title(num2str(rt*dt_traj,'time = %4.2f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
     set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
     view(0,90)
