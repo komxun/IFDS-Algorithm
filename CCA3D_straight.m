@@ -48,7 +48,7 @@ check = 1;
 
     while a*(x(i+1) - ox) + b*(y(i+1) - oy) + c*(z(i+1) - oz) < 0
 %     while (x(i+1) < Wf(1)) 
-%     while 1
+    % while 1
 
         i = i + 1;
         
@@ -113,11 +113,11 @@ check = 1;
         end
         
         % Limit turning angle
-        if psi_d > pi/2
-            psi_d = pi/2;
-        elseif psi_d < -pi/2
-            psi_d = -pi/2;
-        end
+        % if psi_d > pi/2
+        %     psi_d = pi/2;
+        % elseif psi_d < -pi/2
+        %     psi_d = -pi/2;
+        % end
 
         % Limit pitching angle
         if gamma_d > pi/2

@@ -6,13 +6,11 @@ hold on, grid on
 % axis equal
 
 % if animation
-% pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-%     traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-%     traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-%     'Alignment','tail', 'MarkerSize', 12, 'MarkerFaceColor','w','ShowArrowHead','on');
+pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
+    traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
+    traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+    'Alignment','tail', 'MarkerSize', 12, 'MarkerFaceColor','w','ShowArrowHead','on');
 % end
-
-
 
 % IFDS Path, if available
 if ~isempty(Paths{rt})
@@ -20,11 +18,10 @@ if ~isempty(Paths{rt})
 end
 
 % Trail of the UAV trajectory
-% if rt>1
-%     prevTraj = [traj{1:rt-1}];
-%     pltTraj = plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2); 
-% end
-
+if rt>1
+    prevTraj = [traj{1:rt-1}];
+    pltTraj = plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2); 
+end
 
 
 % Obstacle
@@ -34,8 +31,8 @@ xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
 % Constraint Matrix
 % imagesc(0:200, -100:100, weatherMat(:,:,rt), 'AlphaData',1)
 
-surf(xxx, yyy, double(elev), 'EdgeColor', 'none');
-camlight
+% surf(xxx, yyy, double(elev), 'EdgeColor', 'none');
+% camlight
 
 set(gca, 'LineWidth', 2, 'FontSize', fontSize-8)
 set(gca, 'YDir', 'normal')

@@ -12,7 +12,7 @@ weatherMat = elev;
 
 warning off
 weatherMatMod = weatherMat;
-weatherMatMod(weatherMatMod<Zini) = 0;
+weatherMatMod(weatherMatMod<z_i) = 0;
 % weatherMatMod(weatherMatMod<B_L) = B_L;
 % weatherMatMod(weatherMatMod>B_U) = 1;
 
@@ -53,7 +53,7 @@ set(gca, 'YDir', 'normal')
 colormap turbo
 contourf(1:mapSpan,1:mapSpan,weatherMatMod(:,:,1), 30)
 hold on 
-[C2,h2] = contourf(1:mapSpan, 1:mapSpan, weatherMat(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+[C2,h2] = contourf(1:mapSpan, 1:mapSpan, weatherMatMod(:,:,1), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
 
 
 
@@ -71,8 +71,8 @@ Y = 1:mapSpan;
 Z = zeros(length(Y), length(X));
 
 % Compute the gradient of the matrix numerically
-dwdx = double(diff(weatherMat, 1, 2));
-dwdy = double(diff(weatherMat, 1, 1));
+dwdx = double(diff(weatherMatMod, 1, 2));
+dwdy = double(diff(weatherMatMod, 1, 1));
 % dwdz = diff(weatherMat, 1, 1);
 
 % Pad the gradient matrices to match the size of the original matrix

@@ -22,9 +22,7 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
 
     foundPath = 0;
 
-    dR = 10;  % m  Detection Range
-
-    
+    dR = 5;  % m  Detection Range
 
     switch simMode
         case 1 % Simulate by time
@@ -94,7 +92,7 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
                 maxHeight = 0;
                 maxPeakOrigin = [];
 
-                % % --------------Consider max peak as the object (increase computing time )----
+                % --------------Consider max peak as the object (increase computing time )----
                 % for ix = xx + 1 -dR/2 : xx + 1 +dR/2
                 %     for iy = yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2
                 %         peakHeight = ELM(ix, iy);
@@ -108,8 +106,6 @@ function [Paths, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp,
 
                 % elevInRadius = ELM( (xx + 1 -dR/2 : xx + 1 +dR/2),  (yy + mapSpan/2 + 1 -dR/2 : yy + mapSpan/2 + 1 +dR/2)  );
                 
-             
-
                 % Object = create_scene(scene, Object, xx, yy, zz, rt);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
@@ -190,6 +186,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, elm, rho0, sigma
         % Object Distance from UAV
         dist_obj = 1;
         if ~isempty(maxPeakOrigin) == 1
+            disp("maxPeak detected")
             x0 = maxPeakOrigin(1);
             y0 = maxPeakOrigin(2);
             z0 = maxPeakOrigin(3);
@@ -220,9 +217,6 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, elm, rho0, sigma
             else
                 term2 = t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));
             end
-
-
-
 
             M = eye(3) - n*n'/(abs(Gamma)^(1/rho)*(n')*n)...
             + term2;  % tao is removed for now

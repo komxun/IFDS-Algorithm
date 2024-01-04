@@ -3,7 +3,7 @@
 clc, clear, close all
 
 % ___________________Simulation Set-up Parameters__________________________
-mapSpan = 3000;
+mapSpan = 1500;
 fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
@@ -86,7 +86,9 @@ x_i = Xini;
 y_i = Yini;
 % y_i = 0;
 z_i = Zini;
-psi_i = -pi;          % [rad] Initial Yaw angle
+psi_i = 0;          % [rad] Initial Yaw angle
+% psi_i = atan((Yfinal - Yini)/(Xfinal - Xini));   % set initial yaw angle to point to the destination
+% psi_i = atan2(Yfinal - Yini, Xfinal - Xini);
 gamma_i = 0;        % [rad] Initial Pitch angle
 
 
@@ -248,6 +250,7 @@ for rt = 1:rtsim
         
         % Check if the waypoint is ahead of current position
         if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
+            disp("Targeting waypoint #" + num2str(j)) 
             
             err = [err, norm([x_i-Wf(1), y_i-Wf(2), z_i-Wf(3)])];
             [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
@@ -261,7 +264,7 @@ for rt = 1:rtsim
             trajectory(:,i+1) = [x y z]';
             i = i+1;
         else
-%             disp("skip waypoint #" + num2str(j)) 
+            % disp("skip waypoint #" + num2str(j)) 
         end   
     end
     errn{rt} = err;
@@ -566,235 +569,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     
 end
 
-function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L, mapSpan)
-    xr = 0:1:mapSpan;
-    yr = -mapSpan/2:1:mapSpan/2;
-%     zr = 0:100;
-    zr = 0:200;
-    
-    % fixed plane
-    xfixed = 100;
-    yfixed = 0;
-    zfixed = 0;
-    
-    % limits of the rectangular plane
-    x_plane_limits = [min(xr), max(xr)];
-    y_plane_limits = [min(yr), max(yr)];
-    z_plane_limits = [min(zr), max(zr)];
-    
-    xy_vertices = [x_plane_limits(1), y_plane_limits(1), zfixed;
-                   x_plane_limits(1), y_plane_limits(2), zfixed;
-                   x_plane_limits(2), y_plane_limits(2), zfixed;
-                   x_plane_limits(2), y_plane_limits(1), zfixed];
-    yz_vertices = [xfixed, y_plane_limits(1), z_plane_limits(1);
-                   xfixed, y_plane_limits(2), z_plane_limits(1);
-                   xfixed, y_plane_limits(2), z_plane_limits(2);
-                   xfixed, y_plane_limits(1), z_plane_limits(2)];
-    xz_vertices = [x_plane_limits(1), yfixed, z_plane_limits(1);
-                   x_plane_limits(1), yfixed, z_plane_limits(2);
-                   x_plane_limits(2), yfixed, z_plane_limits(2);
-                   x_plane_limits(2), yfixed, z_plane_limits(1)];
-    faces = [1,2,3,4];
-    
-    
-    % Create a grid of X and Y values for X-Y, Y-Z, and X-Z plane
-    [X_grid_xy, Y_grid_xy] = meshgrid(xr, yr);
-    [Y_grid_yz, Z_grid_yz] = meshgrid(yr, zr);
-    [X_grid_xz, Z_grid_xz] = meshgrid(xr, zr);
-    
-    % Convert the symbolic function to a numerical function
-    Gamma_numeric = matlabFunction(Gamma, 'Vars', [X, Y, Z]);
 
 
-%     Gamma_numeric = Gamma_numeric +  1 - exp(omega * log(Gamma_numeric));
-    
-    % Calculate Gamma for each  pair plane
-    Gamma_values_XY_og = Gamma_numeric(X_grid_xy, Y_grid_xy, zfixed);
-    Gamma_values_XY = Gamma_numeric_mod(X_grid_xy, Y_grid_xy, zfixed);
-    Gamma_values_YZ = Gamma_numeric_mod(xfixed, Y_grid_yz, Z_grid_yz);
-    Gamma_values_XZ = Gamma_numeric_mod(X_grid_xz, yfixed, Z_grid_xz);
-    
-    % Define the number of countour levels
-    num_levels = 30;
-    max_Gamm = max([max(max(Gamma_values_XY)), max(max(Gamma_values_YZ)), max(max(Gamma_values_XZ))]);
 
-    % Plot the Gamma distribution
-    sp1 = subplot(2,3,1);
-    fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',80), hold on
-    fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-    patch('Vertices', xy_vertices, 'Faces', faces, 'FaceColor', 'blue', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    patch('Vertices', yz_vertices, 'Faces', faces, 'FaceColor', 'red', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    patch('Vertices', xz_vertices, 'Faces', faces, 'FaceColor', 'green', 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-    axis equal
-    xlim([0 mapSpan])
-    ylim([-mapSpan/2 mapSpan/2])
-    zlim([0 100])
-    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
-    set(gca, 'FontSize', fontSize+2)
 
-    subplot(2,3,2)
-    colormap(flipud(turbo))
-    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY_og, num_levels), hold on
-    [C1,h1] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY_og, [1, 1], 'FaceAlpha',0,...
-        'LineColor', 'w', 'LineWidth', 2);
-    clabel(C1,h1,'FontSize',15,'Color','w')
-    xlabel('X [m]'), ylabel('Y [m]')
-    title("Original \Gamma - Top view (Z = " + num2str(zfixed) + ")");
-    grid on, grid minor, axis equal tight, hold off
-    colorbar
-    set(gca, 'FontSize', fontSize+2)
-
-    sp3 = subplot(2,3,3);
-    set(gca, 'YDir', 'normal')
-    contourf(1:mapSpan,1:mapSpan, weatherMat(:,:,1), num_levels); 
-    hold on
-    [C2,h2] = contourf(1:mapSpan, 1:mapSpan, weatherMat(:,:,1), [1, 1], 'FaceAlpha',0,...
-        'LineColor', 'w', 'LineWidth', 2);
-    clabel(C2,h2,'FontSize',15,'Color','w')
-    xlabel('X [m]'), ylabel('Y [m]')
-    title("Original Constraint Matrix");
-    grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize+2)
-    colormap(sp3,turbo)
-    colorbar
-   
-    subplot(2,3,4)
-    contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, num_levels), hold on
-    [C3,h3] = contourf(X_grid_xy, Y_grid_xy, Gamma_values_XY, [0, 1.00001], 'FaceAlpha',0,...
-        'LineColor', 'w', 'LineWidth', 2);
-    colorbar
-%     clim([0 max_Gamm])
-    clabel(C3,h3,'FontSize',15,'Color','w')
-    xlabel('X [m]'), ylabel('Y [m]')
-    title("\Gamma_p - Top view (Z = " + num2str(zfixed) + ")");
-    grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize+2)
-    
-    % Plot the Y-Z plane distribution
-    subplot(2,3,5)
-    contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, num_levels), hold on
-    [C4,h4] = contourf(Y_grid_yz, Z_grid_yz, Gamma_values_YZ, [1, 1], 'FaceAlpha',0,...
-        'LineColor', 'w', 'LineWidth', 2);
-    colorbar
-%     clim([0 max_Gamm])
-    clabel(C4,h4,'FontSize',15,'Color','w')
-    xlabel('Y [m]'), ylabel('Z [m]')
-    title("\Gamma_p - Front view (X = " + num2str(xfixed) + ")");
-    grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize+2, 'XDir', 'reverse')
-    
-    
-    % Plot the X-Z plane distribution
-    subplot(2,3,6)
-    contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, num_levels), hold on
-    [C5,h5] = contourf(X_grid_xz, Z_grid_xz, Gamma_values_XZ, [1, 1], 'FaceAlpha',0,...
-        'LineColor', 'w', 'LineWidth', 2);
-    colorbar
-%     clim([0 max_Gamm])
-    clabel(C5,h5,'FontSize',15,'Color','w')
-    xlabel('X [m]'), ylabel('Z [m]');
-    title("\Gamma_p - Side view (Y = " + num2str(yfixed) +")");
-    grid on, grid minor, axis equal tight, hold off
-    set(gca, 'FontSize', fontSize+2)
-    
-    colormap(sp1, pink)
-    sgt = sgtitle('Distribution of the boundary function');
-    sgt.FontSize = fontSize + 10;
-
-    function gam = Gamma_numeric_mod(X,Y,Z)
-        gam = Gamma_numeric(X,Y,Z);
-        
-        if size(X,1) > 1 && size(Y,1) >1
-
-            xid = round(X)+1;
-            yid = round(Y)+100+1;
-            
-            xid(xid>mapSpan) = mapSpan;
-            yid(yid>mapSpan) = mapSpan;
-            omega = zeros(size(xid));
-            
-            for i = 1:size(xid,1)
-                
-                for j = 1:size(xid,2)
-                    omega(i,j) = weatherMat(yid(i,j), xid(i,j), 1);
-                end
-            end
-
-            gam = 1 + gam - exp(omega .* log(gam));
-%             gam = gam - k* (exp( (B_L - omega)/(B_L - B_U) * log((gam-1)/k +1) ) -1);
-             
-        end
-
-        
-    end
-end
-
-% function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
-%     for j = 1:size(Object,2)
-%         x0 = Object(j).origin(rt, 1);
-%         y0 = Object(j).origin(rt, 2);
-%         z0 = Object(j).origin(rt, 3);
-%         a = Object(j).a;
-%         b = Object(j).b;
-%         c = Object(j).c;
-%         p = Object(j).p;
-%         q = Object(j).q;
-%         r = Object(j).r;
-% 
-%         Rstar = Object(j).Rstar;
-%     
-%         Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-%         Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
-% 
-% %         if rtsim > 1
-% %             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
-% %             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-% %         else
-%             fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',0.9,'MeshDensity',80), hold on
-%             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-% %         end
-% %         colormap pink
-% 
-%         xlim([0 200])
-%         ylim([-100 100])
-%         zlim([0 100])
-%     end
-% 
-% end
-
-function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if multiTarget
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
-        hold on, grid on, grid minor, axis equal
-        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
-        scatter3(Xini, Yini, Zini, 'filled', 'r')
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
-        hold on
-%         axis equal, grid on, grid minor
-        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    end
-
-    % xlim([0 mapSpan])
-    % ylim([-mapSpan/2 mapSpan/2])
-    % zlim([0 100])
-%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-%     hold off
-end
