@@ -9,7 +9,7 @@ animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = uint16(400);          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
-dt_traj = 1;                 % [s] Trajectory time step
+dt_traj = 0.1;                 % [s] 0.01 - 0.1 Trajectory time step
 rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
@@ -29,7 +29,7 @@ env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.5;          % Repulsive parameter (rho >= 0)
+rho0  = 1;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -79,8 +79,8 @@ Zini = 0;
 % Target Destination
 Xfinal = 200;
 Yfinal = 0;
-% Zfinal = 10;
-Zfinal = 50;
+Zfinal = 10;
+% Zfinal = 50;
 
 % UAV's Initial State
 x_i = 0;
@@ -188,14 +188,16 @@ for rt = 1:rtsim
     err = [];
     tic
     if norm([x_i y_i z_i] - [Xfinal Yfinal Zfinal]) < targetThresh  % [m]
-        disp("Target destination reached at t = " + num2str(rt) + " s")
+        disp("Target destination reached at t = " + num2str(rt*dt_traj) + " s")
         traj = traj(~cellfun('isempty',traj));
         break
     end
                 
     if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic") || scene == 44
+        disp("** Using Local Path **")
         Wp(:,1) = [x_i; y_i; z_i];
     else
+        disp("** Using Global Path **")
         Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
     end
 
@@ -234,7 +236,7 @@ for rt = 1:rtsim
 
     i = 1;
     dtcum = 0;
-    
+    rt2 = ceil(rt*dt_traj/dt);
     for j = 1:length(Paths{rt})-1
         if dtcum >= dt_traj
             break
@@ -251,7 +253,7 @@ for rt = 1:rtsim
         if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
             
             err = [err, norm([x_i-Wf(1), y_i-Wf(2), z_i-Wf(3)])];
-            [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
+            [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning, dt_traj);
             x_i = x(end);
             y_i = y(end);
             z_i = z(end);
@@ -259,7 +261,7 @@ for rt = 1:rtsim
             gamma_i = gamma(end);
             dtcum = dtcum + timeSpent;
           
-            trajectory(:,i+1) = [x y z]';
+            trajectory(:,i+1) = [x_i y_i z_i]';
             i = i+1;
         else
 %             disp("skip waypoint #" + num2str(j)) 
@@ -300,7 +302,7 @@ for rt = 1:size(traj,2)
 
     quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
         traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',140,'AutoScaleFactor', 12,...
         'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
 
     hold on, grid on, axis equal
@@ -338,7 +340,7 @@ for rt = 1:size(traj,2)
 
     quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
         traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
+        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',140,'AutoScaleFactor', 12,...
         'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
 
     hold on, grid on, axis equal
@@ -383,11 +385,12 @@ for rt = 1:size(traj,2)
 
 end
 
-syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
-syms omega(X,Y) wet(X,Y)
+
 
 %%
 figure(69)
+syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
+syms omega(X,Y) wet(X,Y)
 if animation
     simulate = 1:size(traj,2);
 else
@@ -437,14 +440,14 @@ for rt = simulate
         colorbar
         hold off
     end
-    if ~animation
+    % if ~animation
         if rt>1
             legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
             % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
         else
             legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
         end
-    end
+    % end
 
     view(0,90)
     % set(gca, "FontSize", 18)
@@ -461,10 +464,10 @@ for rt = simulate
 
 
     if k ~=0
-    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...
+    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt*dt_traj,'time = %4.2f s')]; ...
         "Constraint Matrix, k = " + num2str(k) +  ", B_U = " + num2str(B_U) + ", B_L = " + num2str(B_L)], 'FontSize', fontSize+2);
     else
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')],'FontSize', fontSize+2);
+    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt*dt_traj,'time = %4.2f s')],'FontSize', fontSize+2);
     end
     % Video saving
     if saveVid

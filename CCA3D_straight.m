@@ -1,6 +1,7 @@
-function [x_final, y_final, z_final, psi_final, gamma_final, timeSpent] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, tuning)
+function [x_final, y_final, z_final, psi_final, gamma_final, timeSpent] = CCA3D_straight(Wi, Wf, x0, y0, z0, psi0, gamma0, V, tuning, dt_traj)
 
 dt = 0.01;
+% dt = dt_traj;
 timeSpent = 0;
 animation = 0;
 %.. Time
@@ -46,9 +47,14 @@ c = Rw_vect(3);
 
 check = 1;
 
-    while a*(x(i+1) - ox) + b*(y(i+1) - oy) + c*(z(i+1) - oz) < 0
+    % while a*(x(i+1) - ox) + b*(y(i+1) - oy) + c*(z(i+1) - oz) < 0
+        
 %     while (x(i+1) < Wf(1)) 
-%     while 1
+    % while 1
+
+        % if timeSpent >= dt_traj
+        %     break
+        % end
 
         i = i + 1;
         
@@ -180,7 +186,7 @@ check = 1;
 
         timeSpent = timeSpent + dt;
         
-        
+
         if animation
             ss = scatter(x(i),y(i), 'filled', 'MarkerFaceColor','blue');
             pause(0.01)
@@ -190,10 +196,10 @@ check = 1;
 %         if norm([x(i+1) y(i+1) z(i+1)]' - Wf) < 1
 %             break;
 %         end
-        if i > 10000
-            break;
-        end
-    end
+        % if i > 10000
+        %     break;
+        % end
+    % end
     
 
 %     subtitle({'CCA',['\delta = ' num2str(delta) '  \kappa = ' num2str(kappa)]})
