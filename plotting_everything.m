@@ -13,9 +13,14 @@ pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
 
 
 
-% IFDS Path, if available
-if ~isempty(Paths{rt})
+% IFDS Path and obstacle, if available
+
+if env == "dynamic" && ~isempty(Paths{rt})
     pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+elseif env == "static"
+    pltPath = PlotPath(1, Paths, Xini, Yini, Zini, destin, multiTarget);
+    [Gamma, Gamma_star] = PlotObject(Object, delta_g, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
 end
 
 % Trail of the UAV trajectory
@@ -25,9 +30,6 @@ if rt>1
 end
 
 
-
-% Obstacle
-[Gamma, Gamma_star] = PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 
 % Constraint Matrix

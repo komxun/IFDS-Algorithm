@@ -215,8 +215,8 @@ if env == "static"
     end
 
     ifdsPaths = Paths{1};
-    ifdsComputingTime = toc;
-    disp("IFDS Path computed time = " + num2str(ifdsComputingTime) + " s")
+    toc
+    disp("IFDS Path computed time = " + num2str())
     
 end
 
@@ -253,8 +253,6 @@ for rt = 1:rtsim
         end
 
         ifdsPaths = Paths{rt};
-        ifdsComputingTime = toc;
-        disp("IFDS Path computed time = " + num2str(ifdsComputingTime) + " s")
     end
 
 
@@ -301,7 +299,7 @@ for rt = 1:rtsim
     trajectory = trajectory(:,1:i);   % remove extra element
     traj{rt} = trajectory;
     timer(rt) = toc;
-    disp("Time step = " + num2str(rt*dt_traj) + ", Traj computed time = " + num2str((timer(rt))) + " s")
+    disp("Time ste = " + num2str(rt*dt_traj) + ", Computed time = " + num2str((timer(rt))) + " s")
 
 end
 
