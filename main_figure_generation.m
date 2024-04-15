@@ -28,7 +28,7 @@ Zfinal = 10;
 
 % Tuning Parameters
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;        % Repulsive parameter (rho >= 0)
+rho0  = 2.5;        % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 Rg = 0;            % [m]  minimum allowed gap distance
 
@@ -117,8 +117,10 @@ Paths = cell(numLine,rtsim);
 
 %% ====================== Main Path-Planning Program ======================
 
-rho0List = [0.5 1 2.5 5 10] ; 
-sigma0List = [0.01];
+% rho0List = [0.5 1 2.5 3.5 5  7.5 15] ; 
+% sigma0List = [0.01];
+rho0List = [1.5] ; 
+sigma0List = [0.01 0.1 0.2 0.5 0.7 1];
 figure(70)
 
 
@@ -129,7 +131,8 @@ for j = 1:length(rho0List)
     for k = 1:length(sigma0List)
         sigma0 = sigma0List(k);
 
-        leg = [leg, "\rho_0 = " + num2str(rho0)];
+%         leg = [leg, "\rho_0 = " + num2str(rho0)];
+        leg = [leg, "\sigma_0 = " + num2str(sigma0)];
 
         for rt = 1:rtsim
             tic
@@ -163,7 +166,9 @@ end
 syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) 
 PlotObject(Object, Rg, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
 legend([leg, "", ""])
-title("IFDS, \sigma_0 = " + num2str(sigma0))
+grid minor
+% title("IFDS, \sigma_0 = " + num2str(sigma0))
+title("IFDS, \rho_0 = " + num2str(rho0))
 
 set(gca, "FontSize", 25, 'LineWidth', 1.5)
 
@@ -410,29 +415,30 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 end
 
 function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    lw = 2.5;
     if multiTarget
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', lw)
         hold on, grid on, grid minor, axis equal
-        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
+        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', lw)
+        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', lw)
         scatter3(Xini, Yini, Zini, 'filled', 'r')
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
+        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', lw)
     else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:), 'LineWidth', 2)
+        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:), 'LineWidth', lw)
         hold on, grid on, grid minor, axis equal
 %         scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
 %         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150)
