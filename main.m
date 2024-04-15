@@ -14,7 +14,7 @@ rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 1;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 3;      % Scenario selection
+scene = 12;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -22,15 +22,15 @@ scene = 3;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 0.01;      % Tangential parameter 
+rho0  = 1.5;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.1;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
