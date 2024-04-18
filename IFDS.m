@@ -24,20 +24,24 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
 
     switch simMode
         case 1 % Simulate by time
-%             disp("Simulating by time for " + num2str(tsim) + " s.")
+
             for t = 1:tsim
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
+                if t>1000
+                    break
+                end
+                Object = create_scene(scene, Object, xx, yy, zz, rt);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
                     Paths{L,rt} = Wp;    % Save into cell array
+                    foundPath = 1;
                     break
                 else
                     % --------------- Weather constraints ------------
-                    Object = create_scene(scene, Object, xx, yy, zz, rt);
                     if k~=0
                         omega = weatherMat(xx+1, yy+101);
                         dwdx_now = dwdx(xx+1, yy+101);
@@ -65,12 +69,21 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                         end
                     end
     
-                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                    [UBar, rho0, sigma0, errFlag] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                         Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
-
+                    if errFlag == 1
+                        break
+                    end
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
-
+%                 t = t+1;
+            end
+            Wp = Wp(:,1:t);
+            Paths{L,rt} = Wp;    % Save into cell array
+            if errFlag == 0
+                foundPath = 1;
+            else
+                foundPath = 0;
             end
 
         case 2 % simulate by reaching distance
@@ -120,13 +133,22 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                         end
                     end
     
-                    [UBar, rho0, sigma0] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
+                    [UBar, rho0, sigma0, errFlag] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                         Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
+                    if errFlag == 1
+                        break
+                    end
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
                 t = t+1;
             end
-            
+            Wp = Wp(:,1:t);
+            Paths{L,rt} = Wp;    % Save into cell array
+            if errFlag == 0
+                foundPath = 1;
+            else
+                foundPath = 0;
+            end  
     end
 
     %======================= post-Calculation =============================
@@ -149,7 +171,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
 
 end
 
-function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, delta_g, C, sf, time)
+function [UBar, rho0, sigma0, errFlag]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma0, useOptimizer, delta_g, C, sf, time)
 
     dist = sqrt((X - xd)^2 + (Y - yd)^2 + (Z - zd)^2);
 
@@ -159,6 +181,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
     numObj = size(Obj,2);
     Mm = zeros(3);
     sum_w = 0;
+    errFlag = 0;
 
     for j = 1:numObj
 
@@ -182,7 +205,7 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
             % ---- optimize the rho0, sigma0 for each object
             if useOptimizer == 2
                 if mod(time,5)==0 % optimize every 5 waypoints
-                    [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0);
+                    [rho0, sigma0] = path_opt2(Gamma, n, t, u, dist, dist_obj, rho0, sigma0)
                 end
             end
             % ---------------------------------------------------
@@ -203,6 +226,11 @@ function [UBar, rho0, sigma0]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rho0, sigma
             + t*n'/(abs(Gamma)^(1/sigma)*norm(t)*norm(n));  % tao is removed for now
         elseif ntu >= 0 && sf == 0
             M = eye(3);
+        else
+            errFlag = 1;
+            UBar = u;
+            return
+            break
         end  
 
         % Weight
