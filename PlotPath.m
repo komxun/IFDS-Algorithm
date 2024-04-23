@@ -21,10 +21,15 @@ function pltPath = PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
         scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
         scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     else
-        pltPath = plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8);
+        if length(Paths{1,rt}) ~= length(Paths{1,1})
+            lineColor = 'r';
+        else
+            lineColor = 'b';
+        end
+        pltPath = plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'--', 'LineWidth', 1.8, 'Color', lineColor);
         hold on
 %         axis equal, grid on, grid minor
-        scatter3(Paths{1,rt}(1,end), Paths{1,rt}(2,end), Paths{1,rt}(3,end),'sb', 'sizedata', 150, 'LineWidth', 1.5)
+        scatter3(Paths{1,rt}(1,end), Paths{1,rt}(2,end), Paths{1,rt}(3,end),'s', 'sizedata', 150, 'LineWidth', 1.5, 'MarkerEdgeColor', lineColor)
         scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
         scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
     end

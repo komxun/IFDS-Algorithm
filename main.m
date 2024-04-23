@@ -5,7 +5,7 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 0;              % Figure(69)m 1: see the simulation
+animation = 1;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 50;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
@@ -14,7 +14,7 @@ rtsim = 60 / dt_traj;                   % [s] (50) time for the whole scenario
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 10;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 41;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -70,7 +70,7 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 10;             % [m/s] UAV cruising speed (30)
+C  = 5;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
@@ -142,7 +142,7 @@ switch scene
 end
 Param.numObj = numObj;
 Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
-    'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0);
+    'a',0,'b',0,'c',0,'p',0,'q',0,'r',0,'Rstar',0, 'sigma_h', 0, 'sigma_v', 0, 'dist_obj', 0 );
 
 disp(['Number of object: ' num2str(size(Object,2))])
 if sf == 0, disp("Shape-following: Off") 
@@ -205,20 +205,29 @@ for rt = 1:rtsim
         traj{rt} = traj{rt-1}(:,end);
     end
 
+    Object = create_scene(scene, Object, x_i, y_i, z_i, rt);
     % GENERATING PATH
-    if rt >10
+    willCollide = CheckCollide(Object, rt);
+    if willCollide
+        disp("Danger! expecting collision")
         isDanger = 1;
+        C = 7;
+        Param.C = C;
     else
         isDanger = 0;
+        C = 5;
+        Param.C = C;
     end
-    if rt > 1 && isDanger ~= 1
+
+    if rt > 1 && isDanger ~= 1 
         Paths2Follow{rt} = Paths{1};
     else
         for L = 1:numLine
             if rt == 1
                 Param.useOptimizer = 1;
                 Param.simMode = 2;  
-                Wp(:,1) = [Xini; Yini; Zini];
+                % Wp(:,1) = [Xini; Yini; Zini];
+                Wp(:,1) = [x_i; y_i; z_i];
             else
                 Param.useOptimizer = 0;
                 Param.simMode = 1;
@@ -228,12 +237,18 @@ for rt = 1:rtsim
             loc_final = destin(L,:)';
             %------------Global Path Optimization-------------
             if Param.useOptimizer == 1
-               [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+                if env == "dynamic"
+                    [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+                elseif env == "static"
+                    [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
+                end
+            else
+                rho0 = 10;
+                sigma0 = 1;
             end
             %------------------------------------------------
             
             % Compute the IFDS Algorithm
-            
             if env == "dynamic"
                 [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
             elseif env == "static"
@@ -439,47 +454,49 @@ for rt = simulate
         end
         hold off
     end
-    % set(gca, "FontSize", 18)
-    subplot(7,2,[2 4 6 8]);
-    plotting_everything
-    if k~=0
-        hold on
-        set(gca, 'YDir', 'normal')
-        % colormap(flipud(bone))
-        colormap turbo 
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-        elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+    
+        % set(gca, "FontSize", 18)
+        subplot(7,2,[2 4 6 8]);
+        plotting_everything
+        if k~=0
+            hold on
+            set(gca, 'YDir', 'normal')
+            % colormap(flipud(bone))
+            colormap turbo 
+            if env == "dynamic"
+                contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+                [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+                contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+            elseif env == "static"
+                contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
+                [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            end
+            clabel(C2,h2,'FontSize',15,'Color','w')
+            colorbar
+            hold off
         end
-        clabel(C2,h2,'FontSize',15,'Color','w')
-        colorbar
-        hold off
-    end
+        if ~animation
+            if rt>1
+                legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
+                % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
+            else
+                legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
+            end
+        end
+    
+        view(0,90)
+        % set(gca, "FontSize", 18)
     if ~animation
-        if rt>1
-            legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-            % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-        else
-            legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
-        end
+        subplot(7,2,[9 11 13])
+        plotting_everything
+        view(90,0)
+        % set(gca, "FontSize", 18)
+    
+        subplot(7,2,[10 12 14])
+        plotting_everything
+        view(0,0)
+        % set(gca, "FontSize", 18)
     end
-
-    view(0,90)
-    % set(gca, "FontSize", 18)
-
-    subplot(7,2,[9 11 13])
-    plotting_everything
-    view(90,0)
-    % set(gca, "FontSize", 18)
-
-    subplot(7,2,[10 12 14])
-    plotting_everything
-    view(0,0)
-    % set(gca, "FontSize", 18)
 
 
     if k ~=0
@@ -570,6 +587,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     function totalLength = PathDistObjective(rho0, sigma0)
         Param.showDisp = 0;
         Param.useOptimizer = 0;
+        Param.k = 0;
         [~, ~, totalLength] = ...
             IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, 1, Object, weatherMat, dwdx, dwdy);
    
@@ -740,3 +758,27 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     end
 end
 
+function out = CheckCollide(Object, rt)
+
+    % rt = rt-1;
+    out = 0;
+    thresh = 3;
+    distThresh = 50; %[m]
+    if rt > 2
+        for j = 1:size(Object,2)
+            % check if dynamic obstacle
+            if all(Object(j).origin(rt,:) == Object(j).origin(rt-1,:))
+                continue
+            end
+            const_smh = abs(Object(j).sigma_h(rt) - Object(j).sigma_h(rt-1)) < thresh;
+            const_smv = abs(Object(j).sigma_v(rt) - Object(j).sigma_v(rt-1)) < thresh;
+            neg_rdot = sign(Object(j).dist_obj(rt) - Object(j).dist_obj(rt-1) ) == -1;
+            smallDist = Object(j).dist_obj(rt) <= distThresh;
+
+            if const_smh && const_smv && neg_rdot && smallDist
+                out = 1;  % will collide
+                return
+            end
+        end
+    end
+end

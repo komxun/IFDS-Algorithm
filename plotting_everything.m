@@ -57,8 +57,8 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
     
         Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
         Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
-
-        if animation
+        % 
+        if animation 
             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',10), hold on
             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',10)
         else
