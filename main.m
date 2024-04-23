@@ -7,14 +7,14 @@ fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
-tsim = 100;          % [s] simulation time for the path 
+tsim = 50;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+rtsim = 60 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
-targetThresh = 1;          % [m] allowed error for final target distance 
+targetThresh = 10;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 44;      % Scenario selection
+scene = 2;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -22,7 +22,7 @@ scene = 44;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0.5;   % Higher(1000) = more effect from weather
+k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
@@ -126,19 +126,19 @@ Param.B_L = B_L;
 
 % Structure Pre-allocation for each scene
 switch scene
-    case 0, numObj = 1;
-    case 1, numObj = 1;
-    case 2, numObj = 2;
-    case 3, numObj = 3;
-    case 4, numObj = 3;
-    case 5, numObj = 3;
-    case 7, numObj = 7;
-    case 12, numObj = 12;
-    case 41, numObj = 3;
-    case 42, numObj = 4;
-    case 44, numObj = 7;
-    case 69, numObj = 4;
-    case 6969, numObj = 3;
+    case 0, numObj = 1; obs = "static";
+    case 1, numObj = 1; obs = "static";
+    case 2, numObj = 2; obs = "static";
+    case 3, numObj = 3; obs = "static";
+    case 4, numObj = 3; obs = "static";
+    case 5, numObj = 3; obs = "static";
+    case 7, numObj = 7; obs = "static";
+    case 12, numObj = 12; obs = "static";
+    case 41, numObj = 3; obs = "dynamic";
+    case 42, numObj = 4; obs = "dynamic";
+    case 44, numObj = 7; obs = "dynamic";
+    case 69, numObj = 4; obs = "static";
+    case 6969, numObj = 3; obs = "dynamic";
 end
 Param.numObj = numObj;
 Object(numObj) = struct('origin',zeros(rtsim,3),'Gamma',0,'n',[],'t',[],...
@@ -177,6 +177,7 @@ timer = zeros(1,rtsim);
 % Pre-allocate waypoints and path
 Wp = zeros(3, tsim+1);
 Paths = cell(numLine,rtsim);
+Paths2Follow = cell(1, rtsim);
 
 %% ====================== Main Path-Planning Program ======================
 
@@ -190,57 +191,78 @@ for rt = 1:rtsim
     if norm([x_i y_i z_i] - [Xfinal Yfinal Zfinal]) < targetThresh  % [m]
         disp("Target destination reached at t = " + num2str(rt) + " s")
         traj = traj(~cellfun('isempty',traj));
+        traj = traj(1:rt-1);
         break
     end
                 
-    if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic") || scene == 44
-        Wp(:,1) = [x_i; y_i; z_i];
-    else
-        Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
-    end
+%     if obs == "dynamic" || (k ~= 0 && env == "dynamic") 
+%         Wp(:,1) = [x_i; y_i; z_i];
+%     else
+%         Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
+%     end
 
     if isempty(traj{rt})
         traj{rt} = traj{rt-1}(:,end);
     end
 
-    for L = 1:numLine
-        
-        loc_final = destin(L,:)';
-        %------------Global Path Optimization-------------
-        if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt})
-        end
-        %------------------------------------------------
-        
-        % Compute the IFDS Algorithm
-        if env == "dynamic"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
-        elseif env == "static"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
-        end
-%         timer(L) = toc;
-
+    % GENERATING PATH
+    if rt >10
+        isDanger = 1;
+    else
+        isDanger = 0;
     end
-
-    if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
-        disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
-        disp("*UAV is standing by*")
-        continue
+    if rt > 1 && isDanger ~= 1
+        Paths2Follow{rt} = Paths{1};
+    else
+        for L = 1:numLine
+            if rt == 1
+                Param.useOptimizer = 1;
+                Param.simMode = 2;  
+                Wp(:,1) = [Xini; Yini; Zini];
+            else
+                Param.useOptimizer = 0;
+                Param.simMode = 1;
+                Wp(:,1) = [x_i; y_i; z_i];
+            end
+            
+            loc_final = destin(L,:)';
+            %------------Global Path Optimization-------------
+            if Param.useOptimizer == 1
+               [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            end
+            %------------------------------------------------
+            
+            % Compute the IFDS Algorithm
+            
+            if env == "dynamic"
+                [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            elseif env == "static"
+                [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
+            end
+    %         timer(L) = toc;
+        end
+    
+        if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
+            disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
+            disp("*UAV is standing by*")
+            continue
+        end
+        Paths2Follow{rt} = Paths{rt};
     end
 
     % Compute Path Following Algorithm
-    trajectory = zeros(3, length(Paths{rt}));
+    trajectory = zeros(3, length(Paths2Follow{rt}));
     trajectory(:,1) = [x_i; y_i; z_i];
 
     i = 1;
     dtcum = 0;
     
-    for j = 1:length(Paths{rt})-1
+    for j = 1:length(Paths2Follow{rt})-1
         if dtcum >= dt_traj
             break
         end 
-        Wi = Paths{rt}(:,j);
-        Wf = Paths{rt}(:,j+1);
+        Wi = Paths2Follow{rt}(:,j);
+        Wf = Paths2Follow{rt}(:,j+1);
     
         path_vect = Wf - Wi;
         a = path_vect(1);
@@ -305,8 +327,8 @@ for rt = 1:size(traj,2)
 
     hold on, grid on, axis equal
 
-    if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+   if ~isempty(Paths2Follow{rt})
+        pltPath = PlotPath(rt, Paths2Follow   , Xini, Yini, Zini, destin, multiTarget);
     end
     if rt>1
         prevTraj = [traj{1:rt-1}];
@@ -343,8 +365,8 @@ for rt = 1:size(traj,2)
 
     hold on, grid on, axis equal
 
-    if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+    if ~isempty(Paths2Follow{rt})
+        pltPath = PlotPath(rt, Paths2Follow   , Xini, Yini, Zini, destin, multiTarget);
     end
     if rt>1
         prevTraj = [traj{1:rt-1}];
@@ -718,72 +740,3 @@ function PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize, weatherMat, k, B_U, B_L
     end
 end
 
-% function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma, Gamma_star)
-%     for j = 1:size(Object,2)
-%         x0 = Object(j).origin(rt, 1);
-%         y0 = Object(j).origin(rt, 2);
-%         z0 = Object(j).origin(rt, 3);
-%         a = Object(j).a;
-%         b = Object(j).b;
-%         c = Object(j).c;
-%         p = Object(j).p;
-%         q = Object(j).q;
-%         r = Object(j).r;
-% 
-%         Rstar = Object(j).Rstar;
-%     
-%         Gamma(X, Y, Z) = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
-%         Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
-% 
-% %         if rtsim > 1
-% %             fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
-% %             fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
-% %         else
-%             fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',0.9,'MeshDensity',80), hold on
-%             fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',30)
-% %         end
-% %         colormap pink
-% 
-%         xlim([0 200])
-%         ylim([-100 100])
-%         zlim([0 100])
-%     end
-% 
-% end
-
-function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if multiTarget
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
-        hold on, grid on, grid minor, axis equal
-        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
-        scatter3(Xini, Yini, Zini, 'filled', 'r')
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
-        hold on
-%         axis equal, grid on, grid minor
-        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    end
-
-    xlim([0 200])
-    ylim([-100 100])
-    zlim([0 100])
-%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-%     hold off
-end
