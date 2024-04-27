@@ -5,22 +5,22 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 1;              % Figure(69)m 1: see the simulation
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 50;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
 rtsim = 60 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
-targetThresh = 10;          % [m] allowed error for final target distance 
+targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 41;      % Scenario selection
+scene = 45;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
-useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
+useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
 k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
@@ -29,7 +29,7 @@ env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 10;          % Repulsive parameter (rho >= 0)
+rho0  = 5;          % Repulsive parameter (rho >= 0)
 sigma0 = 1;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -70,7 +70,7 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 5;             % [m/s] UAV cruising speed (30)
+C  = 7;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
@@ -137,6 +137,7 @@ switch scene
     case 41, numObj = 3; obs = "dynamic";
     case 42, numObj = 4; obs = "dynamic";
     case 44, numObj = 7; obs = "dynamic";
+    case 45, numObj = 6; obs = "dynamic";
     case 69, numObj = 4; obs = "static";
     case 6969, numObj = 3; obs = "dynamic";
 end
@@ -211,12 +212,12 @@ for rt = 1:rtsim
     if willCollide
         disp("Danger! expecting collision")
         isDanger = 1;
-        C = 7;
-        Param.C = C;
+%         C = 7;
+%         Param.C = C;
     else
         isDanger = 0;
-        C = 5;
-        Param.C = C;
+%         C = 5;
+%         Param.C = C;
     end
 
     if rt > 1 && isDanger ~= 1 
@@ -224,12 +225,14 @@ for rt = 1:rtsim
     else
         for L = 1:numLine
             if rt == 1
-                Param.useOptimizer = 1;
+                % Global Path Planning
+%                 Param.useOptimizer = 1;
                 Param.simMode = 2;  
                 % Wp(:,1) = [Xini; Yini; Zini];
                 Wp(:,1) = [x_i; y_i; z_i];
             else
-                Param.useOptimizer = 0;
+                % Local Path Planning
+%                 Param.useOptimizer = 0;
                 Param.simMode = 1;
                 Wp(:,1) = [x_i; y_i; z_i];
             end
@@ -242,9 +245,9 @@ for rt = 1:rtsim
                 elseif env == "static"
                     [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
                 end
-            else
-                rho0 = 10;
-                sigma0 = 1;
+%             else
+%                 rho0 = 10;
+%                 sigma0 = 10;
             end
             %------------------------------------------------
             
@@ -430,7 +433,9 @@ if animation
 else
     simulate = size(traj,2);
 end
-for rt = simulate
+% for rt = simulate
+for rt = 10
+
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -560,7 +565,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     lower_bound_rho = 0.05;  % <0.05 issue started to occur
     lower_bound_sigma = 0;
     
-    upper_bound_rho = 2.5;
+    upper_bound_rho = 10;
     upper_bound_sigma = 1;
     
     % Set up the optimization problem

@@ -59,6 +59,14 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
             Obj(1) = create_cylinder(100 + 50*sin(rt/8), 0 + 50*cos(rt/8), 0, 20, 80, Obj(1));
             Obj(2) = create_sphere(100, 0, 0, 30, Obj(2));
             Obj(3) = create_cylinder(100 - 50*sin(rt/8), 0 - 50*cos(rt/8), 0, 20, 50, Obj(3));
+        case 45
+            Obj(1) = create_cylinder(100 + 50*sin(rt/8), 0 + 50*cos(rt/8), 0, 20, 80, Obj(1));
+            Obj(2) = create_sphere(100, 0, 0, 30, Obj(2));
+            Obj(3) = create_cylinder(100 - 50*sin(rt/8), 0 - 50*cos(rt/8), 0, 20, 50, Obj(3));
+
+            Obj(4) = create_pipe(180, 20, 0, 30, 60, Obj(4));
+            Obj(5) = create_cone(180, -30, 0, 30, 70, Obj(5));
+            Obj(6) = create_pipe(65, -80, 0, 20, 20, Obj(6));
 
         case 42
             % Original
