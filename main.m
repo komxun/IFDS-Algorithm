@@ -7,12 +7,12 @@ fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
-tsim = 100;          % [s] simulation time for the path 
+tsim = 50;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
 rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
-simMode = uint8(2);          % 1: by time, 2: by target distance
-targetThresh = 1;          % [m] allowed error for final target distance 
+simMode = 2;          % 1: by time, 2: by target distance
+targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = 44;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
@@ -25,11 +25,11 @@ delta_g = 10;            % [m]  minimum allowed gap distance
 k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
-env = "static";    % "static" "dynamic"
+env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 10;          % Repulsive parameter (rho >= 0)
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 1;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -208,7 +208,7 @@ for rt = 1:rtsim
         loc_final = destin(L,:)';
         %------------Global Path Optimization-------------
         if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt})
+           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         end
         %------------------------------------------------
         
@@ -306,7 +306,7 @@ for rt = 1:size(traj,2)
     hold on, grid on, axis equal
 
     if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
     end
     if rt>1
         prevTraj = [traj{1:rt-1}];
@@ -344,7 +344,7 @@ for rt = 1:size(traj,2)
     hold on, grid on, axis equal
 
     if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
+        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
     end
     if rt>1
         prevTraj = [traj{1:rt-1}];
@@ -507,8 +507,8 @@ end
 
 %% Plot Gamma Distribution
 
-figure(96)
-PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
+% figure(96)
+% PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
 
 
 %% ------------------------------Function---------------------------------
@@ -750,40 +750,3 @@ end
 %     end
 % 
 % end
-
-function PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget)
-    if multiTarget
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b', 'LineWidth', 1.5)
-        hold on, grid on, grid minor, axis equal
-        plot3(Paths{2,rt}(1,:), Paths{2,rt}(2,:), Paths{2,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{3,rt}(1,:), Paths{3,rt}(2,:), Paths{3,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{4,rt}(1,:), Paths{4,rt}(2,:), Paths{4,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{5,rt}(1,:), Paths{5,rt}(2,:), Paths{5,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{6,rt}(1,:), Paths{6,rt}(2,:), Paths{6,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{7,rt}(1,:), Paths{7,rt}(2,:), Paths{7,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{8,rt}(1,:), Paths{8,rt}(2,:), Paths{8,rt}(3,:),'b', 'LineWidth', 1.5)
-        plot3(Paths{9,rt}(1,:), Paths{9,rt}(2,:), Paths{9,rt}(3,:),'b', 'LineWidth', 1.5)
-        scatter3(Xini, Yini, Zini, 'filled', 'r')
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(2,1),destin(2,2),destin(2,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(3,1),destin(3,2),destin(3,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(4,1),destin(4,2),destin(4,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(5,1),destin(5,2),destin(5,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(6,1),destin(6,2),destin(6,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(7,1),destin(7,2),destin(7,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(8,1),destin(8,2),destin(8,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-        scatter3(destin(9,1),destin(9,2),destin(9,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    else
-        plot3(Paths{1,rt}(1,:), Paths{1,rt}(2,:), Paths{1,rt}(3,:),'b--', 'LineWidth', 1.8)
-        hold on
-%         axis equal, grid on, grid minor
-        scatter3(Xini, Yini, Zini, 'filled', 'r', 'xr', 'sizedata', 150)
-        scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    end
-
-    xlim([0 200])
-    ylim([-100 100])
-    zlim([0 100])
-%     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-%     hold off
-end

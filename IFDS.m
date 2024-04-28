@@ -25,7 +25,9 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
     switch simMode
         case 1 % Simulate by time
 
+            
             for t = 1:tsim
+                Wp(:,t) = real(Wp(:,t));
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
@@ -135,20 +137,20 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
     
                     [UBar, rho0, sigma0, errFlag] = calc_ubar(xx, yy, zz, xd, yd, zd, ...
                         Object, rho0, sigma0, useOptimizer, delta_g, C, sf, t);
-                    if errFlag == 1
-                        break
-                    end
+%                     if errFlag == 1
+%                         break
+%                     end
                     Wp(:,t+1) = Wp(:,t) + UBar * dt;
                 end
                 t = t+1;
             end
             Wp = Wp(:,1:t);
             Paths{L,rt} = Wp;    % Save into cell array
-            if errFlag == 0
-                foundPath = 1;
-            else
-                foundPath = 0;
-            end  
+%             if errFlag == 0
+%                 foundPath = 1;
+%             else
+%                 foundPath = 0;
+%             end  
     end
 
     %======================= post-Calculation =============================
