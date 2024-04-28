@@ -26,6 +26,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
         case 1 % Simulate by time
 
             for t = 1:tsim
+                Wp(:,t) = real(Wp(:,t));
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
@@ -81,7 +82,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
             end
             Wp = Wp(:,1:t);
             Paths{L,rt} = Wp;    % Save into cell array
-            if errFlag == 0
+            if errFlag == 0 %&& all([Object(:).Gamma] > 0.5)
                 foundPath = 1;
             else
                 foundPath = 0;

@@ -7,14 +7,14 @@ fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
-tsim = 50;          % [s] simulation time for the path 
+tsim = 500;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 60 / dt_traj;                   % [s] (50) time for the whole scenario 
+rtsim = 80 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 45;      % Scenario selection
+scene = 44;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -22,15 +22,15 @@ scene = 45;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 5;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -70,7 +70,7 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 7;             % [m/s] UAV cruising speed (30)
+C  = 9.5;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
@@ -209,7 +209,7 @@ for rt = 1:rtsim
     Object = create_scene(scene, Object, x_i, y_i, z_i, rt);
     % GENERATING PATH
     willCollide = CheckCollide(Object, rt);
-    if willCollide
+    if willCollide || any([Object(:).Gamma] < 1)
         disp("Danger! expecting collision")
         isDanger = 1;
 %         C = 7;
@@ -226,13 +226,13 @@ for rt = 1:rtsim
         for L = 1:numLine
             if rt == 1
                 % Global Path Planning
-%                 Param.useOptimizer = 1;
+                Param.useOptimizer = 1;
                 Param.simMode = 2;  
                 % Wp(:,1) = [Xini; Yini; Zini];
                 Wp(:,1) = [x_i; y_i; z_i];
             else
                 % Local Path Planning
-%                 Param.useOptimizer = 0;
+                Param.useOptimizer = 0;
                 Param.simMode = 1;
                 Wp(:,1) = [x_i; y_i; z_i];
             end
@@ -245,9 +245,9 @@ for rt = 1:rtsim
                 elseif env == "static"
                     [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
                 end
-%             else
-%                 rho0 = 10;
-%                 sigma0 = 10;
+            else
+                rho0 = 10;
+                sigma0 = 10;
             end
             %------------------------------------------------
             
