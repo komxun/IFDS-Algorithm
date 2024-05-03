@@ -82,7 +82,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
             end
             Wp = Wp(:,1:t);
             Paths{L,rt} = Wp;    % Save into cell array
-            if errFlag == 0
+            if errFlag == 0 %&& all([Object(:).Gamma] > 0.5)
                 foundPath = 1;
             else
                 foundPath = 0;
@@ -92,6 +92,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
            
             t = 1;
             while true
+                Wp(:,t) = real(Wp(:,t));
                 xx = Wp(1,t);
                 yy = Wp(2,t);
                 zz = Wp(3,t);
@@ -155,12 +156,17 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
 
     %======================= post-Calculation =============================
     if foundPath == 1
-        waypoints = Paths{1,1}';         % Calculate pairwise distances between waypoints
-        differences = diff(waypoints);   % the differences between consecutive waypoints
-        squaredDistances = sum(differences.^2, 2); 
-        
-        % Calculate the total path length
-        totalLength = sum(sqrt(squaredDistances));
+        waypoints = Paths{1,rt};
+%         waypoints = Paths{1,1}';         % Calculate pairwise distances between waypoints
+%         differences = diff(waypoints);   % the differences between consecutive waypoints
+%         squaredDistances = sum(differences.^2, 2); 
+%         
+%         % Calculate the total path length
+%         totalLength = sum(sqrt(squaredDistances));
+
+
+        differences = diff(waypoints, 1, 2); % Calculate differences between consecutive points
+        totalLength = sum(sqrt(sum(differences.^2, 1))); % Calculate Euclidean distance and sum
         
         % Display the total path length
         if showDisp

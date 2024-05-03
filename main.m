@@ -7,11 +7,11 @@ fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
-tsim = 50;          % [s] simulation time for the path 
+tsim = 100;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
 rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
-simMode = 2;          % 1: by time, 2: by target distance
+simMode = 1;          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
 scene = 44;      % Scenario selection
@@ -30,7 +30,7 @@ env = "dynamic";    % "static" "dynamic"
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 2.5;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -183,6 +183,7 @@ Paths = cell(numLine,rtsim);
 traj = cell(1,rtsim);
 traj{1} = [x_i, y_i, z_i];
 errn = cell(1,rtsim);
+plengthT = [];
 
 for rt = 1:rtsim
     err = [];
@@ -214,12 +215,12 @@ for rt = 1:rtsim
         
         % Compute the IFDS Algorithm
         if env == "dynamic"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            [Paths, Object, plength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
         elseif env == "static"
             [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
         end
 %         timer(L) = toc;
-
+        plengthT = [plengthT; plength];
     end
 
     if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
@@ -393,7 +394,8 @@ if animation
 else
     simulate = size(traj,2);
 end
-for rt = simulate
+% for rt = simulate
+for rt = 23
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -449,15 +451,15 @@ for rt = simulate
     view(0,90)
     % set(gca, "FontSize", 18)
 
-    subplot(7,2,[9 11 13])
-    plotting_everything
-    view(90,0)
-    % set(gca, "FontSize", 18)
-
-    subplot(7,2,[10 12 14])
-    plotting_everything
-    view(0,0)
-    % set(gca, "FontSize", 18)
+%     subplot(7,2,[9 11 13])
+%     plotting_everything
+%     view(90,0)
+%     % set(gca, "FontSize", 18)
+% 
+%     subplot(7,2,[10 12 14])
+%     plotting_everything
+%     view(0,0)
+%     % set(gca, "FontSize", 18)
 
 
     if k ~=0
@@ -511,6 +513,65 @@ end
 % PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
 
 
+%% Realtime analysis
+s =  load('time_journal_dyna_2.mat');
+figure
+stem(timer(1:25), 'LineWidth', 2)
+hold on, grid on, grid minor
+stem(s.timer(1:25), 'LineWidth', 2)
+legend("Optimised IFDS Local Path", "IFDS Local Path")
+xlabel("Elapsed Simulation Time (s)", 'FontSize', 20)
+ylabel("Computed Time (s)", 'FontSize', 20)
+set(gca, 'FontSize', 30, 'LineWidth', 1.5)
+
+
+%% Traj Compare
+allTraj = [traj{1:rt}];
+tr = load('allTraj_opt.mat');
+figure
+subplot(1,2,1)
+pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.5);
+hold on, grid on, grid minor, axis equal
+pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
+% Obstacle
+% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+camlight
+xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
+set(gca, 'FontSize', 20, 'LineWidth', 1.5)
+
+subplot(1,2,2)
+pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.5);
+hold on, grid on, grid minor, axis equal
+pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
+% Obstacle
+% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
+view(0,90)
+legend([pltOpt, pltOg],"Optimised Trajectory", "Non-optimised Trajectory")
+set(gca, 'FontSize', 20, 'LineWidth', 1.5)
+
+
+
+
+
+
+% Assuming traj is your matrix
+traj_diff = diff(allTraj, 1, 2); % Calculate differences between consecutive points
+length_traj = sum(sqrt(sum(traj_diff.^2, 1))) % Calculate Euclidean distance and sum
+
+
+traj_diff_opt = diff(tr.allTraj, 1, 2);
+length_traj_opt = sum(sqrt(sum(traj_diff_opt.^2, 1))) % Calculate Euclidean distance and sum
+
+%%
+cumTraj = zeros(1,rt);
+for j = 1:rt
+    trajRT = [traj{1:j}];
+    
+    temDiff = diff(trajRT, 1, 2);
+    cumTraj(j) = sum(sqrt(sum(temDiff.^2, 1)));
+end
+cumTraj
 %% ------------------------------Function---------------------------------
 
 
@@ -522,7 +583,7 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     lower_bound_sigma = 0;
     
     upper_bound_rho = 2.5;
-    upper_bound_sigma = 1;
+    upper_bound_sigma = 2;
     
     % Set up the optimization problem
     problem.objective = @(x) PathDistObjective(x(1), x(2));
@@ -537,11 +598,11 @@ function [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Objec
     problem.solver = 'fmincon';  % specify the solver
     problem.options = optimoptions('fmincon', ...
         'Algorithm', 'interior-point', ...   % option2: sqp
-        'Display', 'off');
+        'Display', 'off', 'MaxIterations',1);
     
     % Call fmincon
     [xOpt, fval, exitflag, output] = fmincon(problem);
-    disp(output)
+%     disp(output)
     rho0 = xOpt(1);
     sigma0 = xOpt(2);
 
