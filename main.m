@@ -7,29 +7,29 @@ fontSize = 20;
 saveVid = 0;
 animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
-tsim = 500;          % [s] simulation time for the path 
+tsim = 50;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
 rtsim = 80 / dt_traj;                   % [s] (50) time for the whole scenario 
 simMode = uint8(2);          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 44;      % Scenario selection
+scene = 46;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
-useOptimizer = 1; % 0:Off  1:Global optimized  2: Local optimized
+useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0.5;   % Higher(1000) = more effect from weather
+k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
-sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.5;          % Repulsive parameter (rho >= 0)
+sf    = uint8(1);   % Shape-following demand (1=on, 0=off)
+rho0  = 1;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -70,23 +70,23 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 9.5;             % [m/s] UAV cruising speed (30)
+C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
-Yini = 0;
-Zini = 0;
+Yini = -100;
+Zini = 10;
 
 % Target Destination
 Xfinal = 200;
-Yfinal = 0;
+Yfinal = 100;
 % Zfinal = 10;
-Zfinal = 50;
+Zfinal = 1;
 
 % UAV's Initial State
 x_i = 0;
-y_i = -20;
+y_i = Yini;
 % y_i = 0;
-z_i = 5;
+z_i = 10;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
@@ -138,6 +138,7 @@ switch scene
     case 42, numObj = 4; obs = "dynamic";
     case 44, numObj = 7; obs = "dynamic";
     case 45, numObj = 6; obs = "dynamic";
+    case 46, numObj = 3; obs = "dynamic";
     case 69, numObj = 4; obs = "static";
     case 6969, numObj = 3; obs = "dynamic";
 end
@@ -423,10 +424,11 @@ for rt = 1:size(traj,2)
 
 end
 
-syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
-syms omega(X,Y) wet(X,Y)
+
 
 %%
+syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
+syms omega(X,Y) wet(X,Y)
 figure(69)
 if animation
     simulate = 1:size(traj,2);
@@ -434,7 +436,7 @@ else
     simulate = size(traj,2);
 end
 % for rt = simulate
-for rt = 10
+for rt = 1
 
     if rt>2
         prevTraj = [traj{1:rt-1}];
@@ -491,17 +493,17 @@ for rt = 10
     
         view(0,90)
         % set(gca, "FontSize", 18)
-    if ~animation
-        subplot(7,2,[9 11 13])
-        plotting_everything
-        view(90,0)
-        % set(gca, "FontSize", 18)
-    
-        subplot(7,2,[10 12 14])
-        plotting_everything
-        view(0,0)
-        % set(gca, "FontSize", 18)
-    end
+%     if ~animation
+%         subplot(7,2,[9 11 13])
+%         plotting_everything
+%         view(90,0)
+%         % set(gca, "FontSize", 18)
+%     
+%         subplot(7,2,[10 12 14])
+%         plotting_everything
+%         view(0,0)
+%         % set(gca, "FontSize", 18)
+%     end
 
 
     if k ~=0
@@ -768,7 +770,7 @@ function out = CheckCollide(Object, rt)
     % rt = rt-1;
     out = 0;
     thresh = 3;
-    distThresh = 50; %[m]
+    distThresh = 25; %[m]
     if rt > 2
         for j = 1:size(Object,2)
             % check if dynamic obstacle
