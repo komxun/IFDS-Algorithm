@@ -1,0 +1,32 @@
+# 4 dynamic obstacles + weather constraints, interesting test of real-time replanning.
+# Equivalent to: python -m scripts.run_main --scene 42 --env dynamic --k 1.0
+simulation:
+  tsim: 100
+  dt: 0.1
+  rtsim: 50
+  dt_traj: 1.0
+  sim_mode: BY_DISTANCE
+
+scenario:
+  scene: 42
+
+ifds:
+  rho0_initial: 1.0
+  sigma0_initial: 1.0
+  use_optimizer: OFF
+  rg: 10.0
+
+weather:
+  k: 1.0
+  b_u: 0.7
+  b_l: 0.0
+  env: dynamic
+
+uav:
+  c: 10.0
+  start: [0.0, 0.0, 0.0]
+  final: [200.0, 0.0, 0.0]
+  pose: {x: 0.0, y: -20.0, z: 5.0, psi: 0.0, gamma: 0.0}
+
+cca:
+  preset: 5

@@ -1,0 +1,30 @@
+# Default demo: 3 static obstacles, no weather, no optimization.
+# Equivalent to: python -m scripts.run_main --scene 3 --env static
+simulation:
+  tsim: 100
+  dt: 0.1
+  rtsim: 50
+  dt_traj: 1.0
+  sim_mode: BY_DISTANCE
+
+scenario:
+  scene: 3
+
+ifds:
+  rho0_initial: 1.0
+  sigma0_initial: 1.0
+  use_optimizer: OFF
+  rg: 10.0
+
+weather:
+  k: 0.5
+  env: static
+
+uav:
+  c: 10.0
+  start: [0.0, 0.0, 0.0]
+  final: [200.0, 0.0, 0.0]
+  pose: {x: 0.0, y: -20.0, z: 5.0, psi: 0.0, gamma: 0.0}
+
+cca:
+  preset: 5

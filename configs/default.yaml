@@ -1,0 +1,41 @@
+# Mirrors the ``Param`` dataclass defaults.
+simulation:
+  tsim: 100
+  dt: 0.1
+  rtsim: 50
+  dt_traj: 1.0
+  sim_mode: BY_DISTANCE
+  target_thresh: 2.0
+  show_disp: true
+
+scenario:
+  scene: 3
+  multi_target: false
+
+ifds:
+  sf: false
+  rho0_initial: 1.0
+  sigma0_initial: 1.0
+  use_optimizer: OFF
+  rg: 10.0
+
+weather:
+  k: 0.0
+  b_u: 0.9
+  b_l: 0.0
+  env: static
+  static_weather_index: 15
+
+uav:
+  c: 10.0
+  start: [0.0, 0.0, 0.0]
+  final: [200.0, 0.0, 0.0]
+  pose:
+    x: 0.0
+    y: -20.0
+    z: 5.0
+    psi: 0.0
+    gamma: 0.0
+
+cca:
+  preset: 5

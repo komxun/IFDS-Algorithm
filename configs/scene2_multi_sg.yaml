@@ -1,0 +1,31 @@
+# Multi-target streamline-generation demo — see scripts/run_sg.py for the original
+# hardcoded equivalent. Use this with scripts/run_main.py to exercise multi_target.
+simulation:
+  tsim: 400
+  dt: 0.1
+  rtsim: 50
+  sim_mode: BY_TIME
+  target_thresh: 2.5
+
+scenario:
+  scene: 2
+  multi_target: true
+
+ifds:
+  rho0_initial: 1.0
+  sigma0_initial: 0.01
+  use_optimizer: OFF
+  rg: 10.0
+
+weather:
+  k: 0.0
+  env: static
+
+uav:
+  c: 30.0
+  start: [0.0, 0.0, 0.0]
+  final: [200.0, 0.0, 10.0]
+  pose: {x: 0.0, y: 0.0, z: 0.0, psi: 0.0, gamma: 0.0}
+
+cca:
+  preset: 5

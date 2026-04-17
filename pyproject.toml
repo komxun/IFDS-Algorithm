@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ifds-algorithm"
+version = "0.1.0"
+description = "Interfered Fluid Dynamical System (IFDS) dynamic UAV autorouting, Python port."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Komsun Tamanakijprasart"}]
+license = {text = "MIT"}
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+    "pyvista>=0.43",
+    "imageio>=2.34",
+    "imageio-ffmpeg>=0.4.9",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "ruff>=0.4"]
+
+[project.scripts]
+ifds-run = "scripts.run_main:main"
+
+[tool.setuptools.packages.find]
+include = ["ifds*", "uav*", "viz*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"

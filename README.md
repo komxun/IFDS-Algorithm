@@ -1,3 +1,78 @@
+IFDS-Algorithm — Dynamic UAV Autorouting (Python)
+=================================================
+
+Python port of Komsun Tamanakijprasart's MATLAB *Interfered Fluid Dynamical
+System* (IFDS) path-planning project. Original video:
+<https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK>
+
+Install
+-------
+
+```
+python -m pip install -e .
+```
+
+Python 3.11+ required. Depends on `numpy`, `scipy`, `matplotlib`, `pyvista`,
+`imageio-ffmpeg`.
+
+Run
+---
+
+Pick a YAML preset from `configs/` (see [`configs/README.md`](configs/README.md)):
+
+```
+python -m scripts.run_main --config configs/scene3_static.yaml
+python -m scripts.run_main --config configs/scene42_dynamic.yaml --rho0 0.5
+python -m scripts.run_main --config configs/scene3_static.yaml --dump-config out.yaml
+```
+
+CLI-only also works (uses `Param()` defaults):
+
+```
+python -m scripts.run_main --scene 3 --env static         # default scenario
+python -m scripts.run_main --scene 42 --env dynamic --k 1 # weather + moving obstacles
+python -m scripts.run_main --scene 3 --optimizer 1        # global optimize rho0, sigma0
+python -m scripts.run_main --no-plot --save-video out/run.mp4
+```
+
+Other entry points mirror the original MATLAB `main_*.m` scripts:
+
+```
+python -m scripts.run_alpha          # alpha sweep (main_ALPHA.m)
+python -m scripts.run_sg             # multi-target demo (main_sg_generation.m)
+python -m scripts.weather_gen --save # regenerate WeatherMat_<seed>
+python -m scripts.realtime_analysis  # timing plots from data/real-time_analysis/
+```
+
+Tests
+-----
+
+```
+pytest -q
+```
+
+Documentation
+-------------
+
+Developer design doc: [`docs/DESIGN.md`](docs/DESIGN.md).
+
+Layout
+------
+
+- `ifds/`    – `enums.py`, `params.py`, `presets.py`, `config_io.py`, `scenes.py`,
+  `objects.py`, `weather.py`, `optimizer.py`, `ifds.py`. `config.py` is a
+  back-compat re-export shim.
+- `uav/`     – CCA3D guidance and UAV dynamics (Kinematic3DoF today, SixDoF stub).
+- `viz/`     – matplotlib 2D + PyVista 3D plotting and animation.
+- `scripts/` – CLI entry points (ports of every MATLAB `main_*.m`).
+- `configs/` – YAML scenario presets loaded via `--config`.
+- `tests/`   – pytest regression suite.
+- `data/`    – MATLAB `.mat` inputs (weather, reference trajectories).
+- `legacy/`  – original `.m` files, preserved unchanged.
+
+Original MATLAB README (historical notes below)
+-----------------------------------------------
+
 Final version for IRP Dynamic Autorouting\
 Results Video: https://youtu.be/XtmcNa-w4-0?si=V0FAj7HmrgcvlQuK
 

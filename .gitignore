@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+*.avi
+*.mp4
+out/
