@@ -5,23 +5,24 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 1;              % Figure(69)m 1: see the simulation
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 100;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+% rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+rtsim =1;
 simMode = 2;          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 3;      % Scenario selection
+scene = 1;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
 
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
-delta_g = 10;            % [m]  minimum allowed gap distance
+delta_g = 0;            % [m]  minimum allowed gap distance
 k = 0;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
@@ -31,7 +32,9 @@ env = "static";    % "static" "dynamic"
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
 rho0  = 1;          % Repulsive parameter (rho >= 0)
 sigma0 = 1;      % Tangential parameter 
-
+alpha_step_deg = 45;
+% alpha_deg_range = [0: alpha_step_deg: 360-alpha_step_deg];
+alpha_deg_range = [0, 75, 90, 105, 180, 255, 270, 285];
 
 % Good: rho0 = 2, simga0 = 0.01
 % The algorihtm still doesnt work for overlapped objects
@@ -75,19 +78,19 @@ C  = 10;             % [m/s] UAV cruising speed (30)
 % Starting location
 Xini = 0;
 Yini = 0;
-Zini = 0;
+Zini = 50;
 
 % Target Destination
 Xfinal = 200;
 Yfinal = 0;
 % Zfinal = 10;
-Zfinal = 0;
+Zfinal = 50;
 
 % UAV's Initial State
-x_i = 0;
-y_i = -20;
+x_i = Xini;
+y_i = Yini;
 % y_i = 0;
-z_i = 5;
+z_i = Zini;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
@@ -185,396 +188,141 @@ traj = cell(1,rtsim);
 traj{1} = [x_i, y_i, z_i];
 errn = cell(1,rtsim);
 % plengthT = [];
-alpha_deg_range = [0:pi/4:7*pi/4];
-alpha_deg = 0;
+Routes = cell(1, length(alpha_deg_range));
+count = 1;
 
-for rt = 1:rtsim
-    err = [];
-    tic
-    if norm([x_i y_i z_i] - [Xfinal Yfinal Zfinal]) < targetThresh  % [m]
-        disp("Target destination reached at t = " + num2str(rt) + " s")
-        traj = traj(~cellfun('isempty',traj));
-        break
-    end
-                
-    if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic") || scene == 44
-        Wp(:,1) = [x_i; y_i; z_i];
-    else
-        Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
-    end
-
-    if isempty(traj{rt})
-        traj{rt} = traj{rt-1}(:,end);
-    end
-
-    for L = 1:numLine
-        
-        loc_final = destin(L,:)';
-        %------------Global Path Optimization-------------
-        if useOptimizer == 1
-           [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
-        end
-        %------------------------------------------------
-        
-        % Compute the IFDS Algorithm
-        if env == "dynamic"
-            [Paths, Object, plength, foundPath] = IFDS(rho0, sigma0, alpha_deg, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
-        elseif env == "static"
-            [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, alpha_deg, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
-        end
-%         timer(L) = toc;
-        % plengthT = [plengthT; plength];
-    end
-
-    if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
-        disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
-        disp("*UAV is standing by*")
-        continue
-    end
-
-    % Compute Path Following Algorithm
-    trajectory = zeros(3, length(Paths{rt}));
-    trajectory(:,1) = [x_i; y_i; z_i];
-
-    i = 1;
-    dtcum = 0;
-    
-    for j = 1:length(Paths{rt})-1
-        if dtcum >= dt_traj
+for alpha_deg = alpha_deg_range
+    disp("Alpha = " + num2str(alpha_deg) +" deg")
+    for rt = 1:rtsim
+        err = [];
+        tic
+        if norm([x_i y_i z_i] - [Xfinal Yfinal Zfinal]) < targetThresh  % [m]
+            disp("Target destination reached at t = " + num2str(rt) + " s")
+            traj = traj(~cellfun('isempty',traj));
             break
-        end 
-        Wi = Paths{rt}(:,j);
-        Wf = Paths{rt}(:,j+1);
-    
-        path_vect = Wf - Wi;
-        a = path_vect(1);
-        b = path_vect(2);
-        c = path_vect(3);
-        
-        % Check if the waypoint is ahead of current position
-        if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
-            
-            err = [err, norm([x_i-Wf(1), y_i-Wf(2), z_i-Wf(3)])];
-            [x, y, z, psi, gamma, timeSpent] = CCA3D_straight(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, C, tuning);
-            x_i = x(end);
-            y_i = y(end);
-            z_i = z(end);
-            psi_i = psi(end);
-            gamma_i = gamma(end);
-            dtcum = dtcum + timeSpent;
-          
-            trajectory(:,i+1) = [x y z]';
-            i = i+1;
+        end
+                    
+        if scene == 41 || scene == 42 || (k ~= 0 && env == "dynamic") || scene == 44
+            Wp(:,1) = [x_i; y_i; z_i];
         else
-%             disp("skip waypoint #" + num2str(j)) 
-        end   
+            Wp(:,1) = [Xini; Yini; Zini];  % can change this to current uav pos
+        end
+    
+        if isempty(traj{rt})
+            traj{rt} = traj{rt-1}(:,end);
+        end
+    
+        for L = 1:numLine
+            
+            loc_final = destin(L,:)';
+            %------------Global Path Optimization-------------
+            if useOptimizer == 1
+               [rho0, sigma0] = path_optimizing(loc_final, rt, Wp, Paths, Param, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            end
+            %------------------------------------------------
+            
+            % Compute the IFDS Algorithm
+            if env == "dynamic"
+                [Paths, Object, plength, foundPath] = IFDS(rho0, sigma0, alpha_deg, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{rt}, dwdxCell{rt}, dwdyCell{rt});
+            elseif env == "static"
+                [Paths, Object, ~, foundPath] = IFDS(rho0, sigma0, alpha_deg, loc_final, rt, Wp, Paths, Param, L, Object, WMCell{15}, dwdxCell{15}, dwdyCell{15});
+            end
+    %         timer(L) = toc;
+            % plengthT = [plengthT; plength];
+        end
+    
+        if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
+            disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
+            disp("*UAV is standing by*")
+            continue
+        end
+        
+        
+        disp("Computed time = " + num2str((timer(rt))) + " s")
+    
     end
-    errn{rt} = err;
-    trajectory = trajectory(:,1:i);   % remove extra element
-    traj{rt} = trajectory;
-    timer(rt) = toc;
-    disp("Computed time = " + num2str((timer(rt))) + " s")
-
+    Routes{count} = Paths{:};
+    count = count + 1;
 end
 
 % timer(timer==0)=[];
 disp("Average computed time = " + num2str(mean(timer(timer~=0))) + " s")
 
 
-%% CCA3D Error Analysis - For static path only!!
-errn = errn(~cellfun('isempty',errn));
-figure(91)
-for j = 1:length(errn)
-    if mod(j,2) == 0
-        styl = 'o-k';
-    else
-        styl = 'o-b';
-    end
-    plot(linspace(j-1,j,size(errn{j},2)), errn{j}, styl, 'LineWidth', 1), hold on
-end
-grid on, grid minor
 %% =======================Plotting Results=================================
-
-for rt = 1:size(traj,2)
-    
+syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
+syms omega(X,Y) wet(X,Y)
+leg = {};
+my_routes = [];
+color_list8 = ["#0072BD", 	"#EDB120", "#77AC30", "#A2142F", 	"#D95319", 	"#7E2F8E", 	"#4DBEEE", "#000000"];
+for rt = 1:size(Routes,2)
+    tempLeg = strcat('\alpha = ', num2str(alpha_deg_range(rt)));
+    tempLeg = strcat(tempLeg, ' °');
+    leg{end+1} = tempLeg;
     % Plotting the path
     figure(70)
     set(gcf, 'Position', get(0, 'Screensize'));
-    subplot(1,2,1)
-
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
-
-    hold on, grid on, axis equal
-
-    if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
-    end
-    if rt>1
-        prevTraj = [traj{1:rt-1}];
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2) 
-    end
+    subplot(2,2,[1,3])
+    plot3(Routes{rt}(1,:), Routes{rt}(2,:), Routes{rt}(3,:),'-', 'LineWidth', 1.8, 'Color', color_list8(rt))
+    grid on
+    hold on, axis equal
 
     scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    
-    if k~=0
-        set(gca, 'YDir', 'normal')
-        colormap turbo
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
+    % Obstacle
+    if rt == 1
+        [Gamma, Gamma_star] = PlotObject(Object, delta_g, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
+        xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     end
     
-    xlim([0 200]), ylim([-100 100]), zlim([0 100])
-    title(num2str(rt*dt_traj,'time = %4.2f s')) 
+    xlim([0 200]), ylim([-50 50]), zlim([0 100])
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
+    set(gca, 'LineWidth', 2, 'FontSize', 20)
 %     view(0,90)
-    hold off
 
-    subplot(1,2,2)
-
-    quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-        traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-        traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-        'Alignment','tail', 'MarkerSize', 10, 'MarkerFaceColor','w','ShowArrowHead','on')
-
-    hold on, grid on, axis equal
-
-    if ~isempty(Paths{rt})
-        PlotPath(rt, Paths, Xini, Yini, Zini, destin, multiTarget);
-    end
-    if rt>1
-        prevTraj = [traj{1:rt-1}];
-        plot3(prevTraj(1,:), prevTraj(2,:), prevTraj(3,:), 'k', 'LineWidth', 1.2)
-        
-    end
-
+    subplot(2,2,2)
+    my_routes(rt) = plot3(Routes{rt}(1,:), Routes{rt}(2,:), Routes{rt}(3,:),'-', 'LineWidth', 1.8, 'Color', color_list8(rt));
+    grid on
+    hold on, axis equal
     scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
-    
-    if k~=0
-        set(gca, 'YDir', 'normal')
-        colormap turbo
-        
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15), 30)
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
-        
-        clabel(C2,h2,'FontSize',15,'Color','w')
+    % Obstacle
+    if rt == 1
+        [Gamma, Gamma_star] = PlotObject(Object, delta_g, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
+        xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     end
-
     
     xlim([0 200])
-    ylim([-100 100])
+    ylim([-50 50])
     zlim([0 100])
     
-    title(num2str(rt*dt_traj,'time = %4.2f s')) 
     xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
-    set(gca, 'LineWidth', 2, 'FontSize', fontSize-6)
-    view(0,90)
-    hold off
-%     pause(0.1)
+    set(gca, 'LineWidth', 2, 'FontSize', 20)
+    view(-90,0)
+    lgd = legend(my_routes, leg);
+    set(lgd, 'interpreter', 'tex')
 
-end
-
-syms X Y Z Gamma(X,Y,Z) Gamma_star(X,Y,Z) Gamma_prime(X,Y,Z)
-syms omega(X,Y) wet(X,Y)
-
-%%
-figure(69)
-if animation
-    simulate = 1:size(traj,2);
-else
-    simulate = size(traj,2);
-end
-for rt = simulate
-% for rt = 23
-    if rt>2
-        prevTraj = [traj{1:rt-1}];
+    subplot(2,2,4)
+    plot3(Routes{rt}(1,:), Routes{rt}(2,:), Routes{rt}(3,:),'-', 'LineWidth', 1.8, 'Color', color_list8(rt));
+    grid on
+    hold on, axis equal
+    scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5)
+    % Obstacle
+    if rt == 1
+        [Gamma, Gamma_star] = PlotObject(Object, delta_g, 1, rtsim, X, Y, Z, Gamma, Gamma_star);
+        xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
     end
-
-    figure(69)
-    set(gcf, 'Position', get(0, 'Screensize'));
-    subplot(7,2,[1 3 5 7])
-    plotting_everything
     
-    if k~=0
-        hold on
-        set(gca, 'YDir', 'normal')
- 
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-        elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
-        hold off
-    end
-    % set(gca, "FontSize", 18)
-    subplot(7,2,[2 4 6 8]);
-    plotting_everything
-    if k~=0
-        hold on
-        set(gca, 'YDir', 'normal')
-        % colormap(flipud(bone))
-        colormap turbo 
-        if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
-        elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-        end
-        clabel(C2,h2,'FontSize',15,'Color','w')
-        colorbar
-        hold off
-    end
-    if ~animation
-        if rt>1
-            legend([pltDestin, pltPath, pltTraj], "Destination", "IFDS Path", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-            % legend([pltDestin, pltTraj], "Destination", "UAV Trajectory",'Position',[0.757 0.917 0.09 0.04])
-        else
-            legend([pltDestin, pltPath], "Destination", "IFDS Path",'Position',[0.757 0.917 0.09 0.04])
-        end
-    end
-
+    xlim([0 200])
+    ylim([-50 50])
+    zlim([0 100])
+   
+    xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]');
+    set(gca, 'LineWidth', 2, 'FontSize', 20)
     view(0,90)
-    % set(gca, "FontSize", 18)
 
-%     subplot(7,2,[9 11 13])
-%     plotting_everything
-%     view(90,0)
-%     % set(gca, "FontSize", 18)
-% 
-%     subplot(7,2,[10 12 14])
-%     plotting_everything
-%     view(0,0)
-%     % set(gca, "FontSize", 18)
-
-
-    if k ~=0
-    sgtitle([['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')]; ...
-        "Constraint Matrix, k = " + num2str(k) +  ", B_U = " + num2str(B_U) + ", B_L = " + num2str(B_L)], 'FontSize', fontSize+2);
-    else
-    sgtitle(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0) ', SF = ' num2str(sf),', \delta_g = ', num2str(delta_g), 'm, ', num2str(rt,'time = %4.1f s')],'FontSize', fontSize+2);
-    end
-    % Video saving
-    if saveVid
-        frm(rt) = getframe(gcf) ;
-        drawnow
-    end
 end
+sgtitle("IFDS with \rho_0 = " + num2str(rho0) +", \sigma_0 = " + num2str(sigma0), 'FontSize', 28)
 
 
-
-% title(['IFDS, \rho_0 = ' num2str(rho0) ', \sigma_0 = ' num2str(sigma0)],...
-%     'FontSize',26);
-% subtitle(['SF = ' num2str(sf)], 'FontSize', 24)
-
-
-if saveVid
-    if k~=0
-        text = "_weather";
-    else
-        text = "";
-    end
-    video_name = "Result_scene_" + num2str(scene) + text + ".avi";
-    disp("Video saved: " + video_name);
-    % create the video writer with 1 fps
-    writerObj = VideoWriter(video_name);
-%     writerObj.FrameRate = 30;
-    writerObj.FrameRate = 2;
-    % set the seconds per image
-    % open the video writer
-    open(writerObj);
-    % write the frames to the video
-    for i=1:length(frm)
-        % convert the image to a frame
-        frame = frm(i) ;    
-        writeVideo(writerObj, frame);
-    end
-    % close the writer object
-    close(writerObj);
-end
-
-%% Plot Gamma Distribution
-
-% figure(96)
-% PlotGamma(Gamma, Gamma_star, X, Y, Z, fontSize - 8, weatherMatMod, k, B_U, B_L)
-
-
-%% Realtime analysis
-s =  load('time_journal_dyna_2.mat');
-figure
-stem(timer(1:25), 'LineWidth', 2)
-hold on, grid on, grid minor
-stem(s.timer(1:25), 'LineWidth', 2)
-legend("Optimised IFDS Local Path", "IFDS Local Path")
-xlabel("Elapsed Simulation Time (s)", 'FontSize', 20)
-ylabel("Computed Time (s)", 'FontSize', 20)
-set(gca, 'FontSize', 30, 'LineWidth', 1.5)
-
-
-%% Traj Compare
-allTraj = [traj{1:rt}];
-tr = load('allTraj_opt.mat');
-figure
-subplot(1,2,1)
-pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.5);
-hold on, grid on, grid minor, axis equal
-pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
-% Obstacle
-% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-camlight
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
-set(gca, 'FontSize', 20, 'LineWidth', 1.5)
-
-subplot(1,2,2)
-pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.5);
-hold on, grid on, grid minor, axis equal
-pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
-% Obstacle
-% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
-xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
-view(0,90)
-legend([pltOpt, pltOg],"Optimised Trajectory", "Non-optimised Trajectory")
-set(gca, 'FontSize', 20, 'LineWidth', 1.5)
-
-
-
-
-
-
-% Assuming traj is your matrix
-traj_diff = diff(allTraj, 1, 2); % Calculate differences between consecutive points
-length_traj = sum(sqrt(sum(traj_diff.^2, 1))) % Calculate Euclidean distance and sum
-
-
-traj_diff_opt = diff(tr.allTraj, 1, 2);
-length_traj_opt = sum(sqrt(sum(traj_diff_opt.^2, 1))) % Calculate Euclidean distance and sum
-
-%%
-cumTraj = zeros(1,rt);
-for j = 1:rt
-    trajRT = [traj{1:j}];
-    
-    temDiff = diff(trajRT, 1, 2);
-    cumTraj(j) = sum(sqrt(sum(temDiff.^2, 1)));
-end
-cumTraj
 %% ------------------------------Function---------------------------------
 
 

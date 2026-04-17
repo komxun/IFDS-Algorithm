@@ -24,7 +24,7 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
 %         end
 
         xlim([0 200])
-        ylim([-100 100])
+        % ylim([-100 100])
         zlim([0 100])
     end
 

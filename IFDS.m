@@ -1,4 +1,4 @@
-function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
+function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, alpha_deg, loc_final, rt, Wp, Paths, Param, L, Object, weatherMat, dwdx, dwdy)
 
     % Read the parameters
     simMode = Param.simMode;
@@ -35,7 +35,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                 if t>1000
                     break
                 end
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
+                Object = create_scene(scene, Object, xx, yy, zz, rt, alpha_deg);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
@@ -100,7 +100,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, loc_final,
                 if t>1000
                     break
                 end
-                Object = create_scene(scene, Object, xx, yy, zz, rt);
+                Object = create_scene(scene, Object, xx, yy, zz, rt, alpha_deg);
                 if norm([xx yy zz] - [xd yd zd]) < targetThresh
 %                     disp('Target destination reached!')
                     Wp = Wp(:,1:t);
@@ -306,7 +306,7 @@ function [UBar, rho0, sigma0, errFlag]  = calc_ubar(X, Y, Z, xd, yd, zd, Obj, rh
 
 end
 
-function Obj = create_scene(num, Obj, X, Y, Z, rt)
+function Obj = create_scene(num, Obj, X, Y, Z, rt, alpha_deg)
     switch num
         case 0
             Obj(1) = create_ceiling(100, 0, 50, 200, 10, Obj(1));
@@ -315,7 +315,8 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
 %             Obj(1) = create_cone(100, 5, 0, 50, 80, Obj(1));
 
             % Obj(1) = create_sphere(100, 5, 0, 50, Obj(1));
-            Obj(1) = create_sphere(100, 75, 0, 50, Obj(1));
+            Obj(1) = create_sphere(100, 0, 50, 50, Obj(1));
+            % Obj(1) = create_sphere(100, 75, 0, 50, Obj(1));
 
     
         case 2 % 2 objects
@@ -413,13 +414,24 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         a = D/2;   b = D/2;   c = D/2;      % Object's axis length
         p = 1;     q = 1;     r = 1;        % Index parameters
        
+        
         % Object Shape Equation
         Gamma = ((X - x0) / a).^(2*p) + ((Y - y0) / b).^(2*q) + ((Z - z0) / c).^(2*r);
         % Differential
         [dGdx, dGdy, dGdz] = calc_dG();
         
         n = [dGdx; dGdy; dGdz];
-        t = [dGdy; -dGdx; 0];
+
+        % alpha_deg = 90;
+        alpha = alpha_deg*pi/180;
+        rot = [dGdy,  dGdx*dGdz, dGdx;
+               -dGdx, dGdy*dGdz, dGdy;
+               0, -(dGdx^2)-(dGdy^2), dGdz];
+
+        tprime = [cos(alpha); sin(alpha); 0];
+        t = rot*tprime;
+        
+        % t = [dGdy; -dGdx; 0];
 %-----------------------------------------------------------------------
         
         % Save to Field
@@ -453,7 +465,15 @@ function Obj = create_scene(num, Obj, X, Y, Z, rt)
         [dGdx, dGdy, dGdz] = calc_dG();
 
         n = [dGdx; dGdy; dGdz];
-        t = [dGdy; -dGdx; 0];
+        % alpha_deg = 90;
+        alpha = alpha_deg*pi/180;
+        rot = [dGdy,  dGdx*dGdz, dGdx;
+               -dGdx, dGdy*dGdz, dGdy;
+               0, -(dGdx^2)-(dGdy^2), dGdz];
+
+        tprime = [cos(alpha); sin(alpha); 0];
+        t = rot*tprime;
+        % t = [dGdy; -dGdx; 0];
 
 
         % Save to Field
