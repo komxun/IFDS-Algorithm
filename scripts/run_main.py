@@ -28,7 +28,18 @@ from ifds.ifds import run_ifds
 from ifds.optimizer import global_optimize_path, make_global_objective
 from ifds.scenes import allocate_objects
 from ifds.weather import WeatherField, load_weather_field
-from uav.guidance import cca3d_straight
+from uav.dynamics import SixDoF, quat_to_euler
+from uav.guidance import cca3d_straight, sixdof_follow_segment
+from uav.profiles import available_profiles, quadrotor_profile
+
+# Lazy import for PyBullet mode — avoid hard dependency when not used.
+_run_pybullet = None
+def _get_run_pybullet():
+    global _run_pybullet
+    if _run_pybullet is None:
+        from sim.runner import run_pybullet as _rp
+        _run_pybullet = _rp
+    return _run_pybullet
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_WEATHER = REPO_ROOT / "data" / "WeatherMat_321.mat"
@@ -102,7 +113,9 @@ def _load_weather(param: Param, path: Path) -> WeatherField | None:
 
 
 def run(param: Param, *, weather_path: Path = DEFAULT_WEATHER,
-        plot: bool = True, animate: bool = False, save_video: Path | None = None) -> dict:
+        plot: bool = True, animate: bool = False, save_video: Path | None = None,
+        dynamics: str = "kinematic", drone_profile: str = "generic",
+        drone_model: str = "cf2x", pybullet_gui: bool = True) -> dict:
     """Execute the full dynamic autorouting pipeline and return results."""
     weather = _load_weather(param, weather_path)
 
@@ -124,16 +137,34 @@ def run(param: Param, *, weather_path: Path = DEFAULT_WEATHER,
     rho0, sigma0 = param.rho0_initial, param.sigma0_initial
     x_i, y_i, z_i = param.x_i, param.y_i, param.z_i
     psi_i, gamma_i = param.psi_i, param.gamma_i
+    psi_hist: list[float] = [psi_i]
+    gamma_hist: list[float] = [gamma_i]
+
+    use_sixdof = dynamics == "sixdof"
+    use_pybullet = dynamics == "pybullet"
+    sixdof_dyn: SixDoF | None = None
+    sixdof_state: np.ndarray | None = None
+    quat_hist: list[np.ndarray] = []
+    if use_sixdof:
+        profile = quadrotor_profile(drone_profile)
+        sixdof_dyn = SixDoF.from_profile(profile)
+        sixdof_state = SixDoF.make_state(
+            x=x_i, y=y_i, z=z_i, u=param.c, yaw=psi_i, pitch=gamma_i,
+        )
+        quat_hist.append(sixdof_state[6:10].copy())
 
     dynamic_scene = param.scene in {Scene.DYNAMIC_3, Scene.DYNAMIC_4, Scene.DYNAMIC_7}
 
+    # ---------- Phase 1: compute IFDS paths for every rt step ----------
     for rt in range(param.rtsim):
         t0 = time.perf_counter()
-        if np.linalg.norm(np.array([x_i, y_i, z_i])
-                          - np.array([param.xfinal, param.yfinal, param.zfinal])) < param.target_thresh:
-            print(f"Target destination reached at rt = {rt}")
-            traj = [t for t in traj if t is not None]
-            break
+        if not use_pybullet:
+            # For kinematic / sixdof: check arrival from in-loop state
+            if np.linalg.norm(np.array([x_i, y_i, z_i])
+                              - np.array([param.xfinal, param.yfinal, param.zfinal])) < param.target_thresh:
+                print(f"Target destination reached at rt = {rt}")
+                traj = [t for t in traj if t is not None]
+                break
 
         if dynamic_scene or (param.k != 0 and param.env == "dynamic"):
             wp[:, 0] = [x_i, y_i, z_i]
@@ -161,9 +192,17 @@ def run(param: Param, *, weather_path: Path = DEFAULT_WEATHER,
 
         if not found_path or paths[0][rt] is None or paths[0][rt].shape[1] == 1:
             print(f"CAUTION : Path not found at rt = {rt} s — UAV standing by")
+            if use_pybullet:
+                continue
+            else:
+                continue
+
+        # ---- For pybullet mode: paths are collected; skip CCA3D here --
+        if use_pybullet:
+            timer[rt] = time.perf_counter() - t0
             continue
 
-        # Path following (CCA3D) — slice up to dt_traj of travel
+        # Path following (CCA3D / SixDoF) — slice up to dt_traj of travel
         path_rt = paths[0][rt]
         trajectory = np.zeros((3, path_rt.shape[1]))
         trajectory[:, 0] = [x_i, y_i, z_i]
@@ -179,13 +218,26 @@ def run(param: Param, *, weather_path: Path = DEFAULT_WEATHER,
             a, b, c = path_vect
             if a * (x_i - wf[0]) + b * (y_i - wf[1]) + c * (z_i - wf[2]) < 0:
                 err.append(float(np.linalg.norm([x_i - wf[0], y_i - wf[1], z_i - wf[2]])))
-                res = cca3d_straight(
-                    wi, wf, x_i, y_i, z_i, psi_i, gamma_i, param.c,
-                    kappa=param.cca.kappa, delta=param.cca.delta, kd=param.cca.kd,
-                )
-                x_i = float(res.x[-1]); y_i = float(res.y[-1]); z_i = float(res.z[-1])
-                psi_i = float(res.psi[-1]); gamma_i = float(res.gamma[-1])
-                dt_cum += res.time_spent
+                if use_sixdof and sixdof_dyn is not None and sixdof_state is not None:
+                    res6 = sixdof_follow_segment(
+                        wi, wf, sixdof_state, sixdof_dyn, dt=0.01,
+                    )
+                    sixdof_state = res6.states[-1].copy()
+                    x_i = float(res6.x[-1]); y_i = float(res6.y[-1]); z_i = float(res6.z[-1])
+                    roll_f, pitch_f, yaw_f = quat_to_euler(sixdof_state[6:10])
+                    psi_i = yaw_f; gamma_i = pitch_f
+                    psi_hist.append(psi_i); gamma_hist.append(gamma_i)
+                    quat_hist.append(sixdof_state[6:10].copy())
+                    dt_cum += res6.time_spent
+                else:
+                    res = cca3d_straight(
+                        wi, wf, x_i, y_i, z_i, psi_i, gamma_i, param.c,
+                        kappa=param.cca.kappa, delta=param.cca.delta, kd=param.cca.kd,
+                    )
+                    x_i = float(res.x[-1]); y_i = float(res.y[-1]); z_i = float(res.z[-1])
+                    psi_i = float(res.psi[-1]); gamma_i = float(res.gamma[-1])
+                    psi_hist.append(psi_i); gamma_hist.append(gamma_i)
+                    dt_cum += res.time_spent
                 trajectory[:, i + 1] = [x_i, y_i, z_i]
                 i += 1
         errn[rt] = err
@@ -195,12 +247,33 @@ def run(param: Param, *, weather_path: Path = DEFAULT_WEATHER,
         if param.show_disp:
             print(f"rt={rt}: computed time = {timer[rt]:.4f} s")
 
+    # ---------- Phase 2: if pybullet, run the PyBullet simulation ------
+    if use_pybullet:
+        print("[pybullet] IFDS paths computed — launching PyBullet simulation . . .")
+        run_pyb = _get_run_pybullet()
+        result = run_pyb(
+            param, paths, objects, destin,
+            weather=weather,
+            drone_model_name=drone_model,
+            gui=pybullet_gui,
+        )
+        if plot:
+            _plot(result, param)
+        if animate:
+            _animate(result, param)
+        if save_video is not None:
+            _save_video(result, param, save_video)
+        return result
+
     nz = timer[timer != 0]
     if nz.size:
         print(f"Average computed time = {nz.mean():.4f} s")
 
+    attitude: dict = dict(psi=np.array(psi_hist), gamma=np.array(gamma_hist))
+    if use_sixdof and quat_hist:
+        attitude["quat"] = np.array(quat_hist)
     result = dict(paths=paths, traj=traj, objects=objects, destin=destin, timer=timer, errn=errn,
-                 weather=weather)
+                 weather=weather, attitude=attitude)
 
     if plot:
         _plot(result, param)
@@ -215,12 +288,14 @@ def _plot(result: dict, param: Param) -> None:
     import matplotlib.pyplot as plt
 
     from viz.plotting import _set_equal_aspect_3d, plot_objects_mpl, plot_path_2d, plot_weather_ground
+    from viz.uav_marker import draw_arrow, draw_quadrotor
 
     traj = result["traj"]
     paths = result["paths"]
     objects = result["objects"]
     destin = result["destin"]
     weather = result.get("weather")
+    attitude = result.get("attitude")  # dict with psi/gamma or quat
 
     fig = plt.figure(figsize=(12, 8))
     ax = fig.add_subplot(111, projection="3d")
@@ -240,6 +315,15 @@ def _plot(result: dict, param: Param) -> None:
     ax.scatter([param.xini], [param.yini], [param.zini], c='r', marker='o', s=80, label="Start")
     for d in destin:
         ax.scatter([d[0]], [d[1]], [d[2]], c='r', marker='x', s=150)
+    # UAV marker at final position
+    if segments:
+        final_pos = full[:, -1]
+        if attitude is not None and "quat" in attitude:
+            draw_quadrotor(ax, final_pos, attitude["quat"][-1])
+        else:
+            psi_f = attitude["psi"][-1] if attitude else 0.0
+            gamma_f = attitude["gamma"][-1] if attitude else 0.0
+            draw_arrow(ax, final_pos, psi_f, gamma_f)
     ax.set_xlim(0, 200)
     ax.set_ylim(-100, 100)
     ax.set_zlim(0, 100)
@@ -268,6 +352,7 @@ def _animate(result: dict, param: Param) -> None:
         objects_per_rt=result["objects"],
         destin=result["destin"],
         weather=result.get("weather"),
+        attitude=result.get("attitude"),
         multi_target=param.multi_target,
         xini=param.xini,
         yini=param.yini,
@@ -282,7 +367,8 @@ def _save_video(result: dict, param: Param, path: Path) -> None:
 
     animate_trajectory(
         traj=result["traj"], paths=result["paths"], objects_per_rt=result["objects"],
-        destin=result["destin"], save_path=path, fps=2,
+        destin=result["destin"], attitude=result.get("attitude"),
+        save_path=path, fps=2,
     )
     print(f"Video saved: {path}")
 
@@ -336,24 +422,33 @@ def build_argparser() -> argparse.ArgumentParser:
     rt.add_argument("--animate", action="store_true",
                     help="Show an interactive animated plot stepping through each rt frame")
     rt.add_argument("--save-video", type=Path, default=None)
-    rt.add_argument("--dynamics", choices=["kinematic", "sixdof"], default="kinematic",
-                    help="UAV dynamics model (sixdof is a stub — will raise NotImplementedError)")
+    rt.add_argument("--dynamics", choices=["kinematic", "sixdof", "pybullet"], default="kinematic",
+                    help="UAV dynamics model: kinematic (CCA3D), sixdof (L1 + PD), or pybullet")
+    rt.add_argument("--drone-profile", dest="drone_profile", default="generic",
+                    choices=available_profiles(),
+                    help="Quadrotor profile for 6DoF dynamics (ignored in kinematic mode)")
+    rt.add_argument("--drone-model", dest="drone_model", default="cf2x",
+                    choices=["cf2x", "cf2p", "hb", "racer"],
+                    help="PyBullet drone URDF model (only used with --dynamics pybullet)")
+    rt.add_argument("--pybullet-gui", dest="pybullet_gui", action="store_true", default=True,
+                    help="Open the PyBullet GUI window (default: True)")
+    rt.add_argument("--no-pybullet-gui", dest="pybullet_gui", action="store_false",
+                    help="Run PyBullet in headless (DIRECT) mode")
     rt.add_argument("--quiet", action="store_true")
     return p
 
 
 def main(argv: list[str] | None = None) -> None:
     args = build_argparser().parse_args(argv)
-    if args.dynamics == "sixdof":
-        from uav.dynamics import SixDoF
-        SixDoF().step(np.zeros(13), np.zeros(6), args.dt or 0.1)  # raises NotImplementedError
     param = _build_param(args)
     if args.dump_config is not None:
         dump_config(param, args.dump_config)
         print(f"Resolved config written to {args.dump_config}")
         sys.exit(0)
     run(param, weather_path=args.weather_path, plot=args.plot,
-        animate=args.animate, save_video=args.save_video)
+        animate=args.animate, save_video=args.save_video,
+        dynamics=args.dynamics, drone_profile=args.drone_profile,
+        drone_model=args.drone_model, pybullet_gui=args.pybullet_gui)
 
 
 if __name__ == "__main__":

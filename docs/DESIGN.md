@@ -71,10 +71,12 @@ resolved `Param` back out for reproducibility.
 | `ifds/weather.py` | Weather field loader & interpolators | `WeatherField`, `load_weather_field`, `generate_weather_map` | `initialize_constraint_matrix.m`, `Weather_map_Generator.m` |
 | `ifds/optimizer.py` | (rho0, sigma0) optimization | `norm_ubar`, `local_opt_rho_sigma`, `global_optimize_path`, `make_global_objective` | `norm_ubar.m`, `path_opt2` in `IFDS.m`, `path_optimizing` in `main.m` |
 | `ifds/ifds.py` | Core algorithm | `calc_ubar`, `ifds_step`, `run_ifds` | `IFDS.m` |
-| `uav/guidance.py` | CCA3D carrot-chasing | `cca3d_straight`, `CCAResult` | `CCA3D_straight.m` |
-| `uav/dynamics.py` | Dynamics protocol + models | `Dynamics`, `Kinematic3DoF`, `SixDoF` | inlined EOM in `CCA3D_straight.m`; new 6-DoF scaffold |
+| `uav/guidance.py` | CCA3D carrot-chasing + L1 guidance + PD attitude controller | `cca3d_straight`, `l1_guidance`, `attitude_pd_control`, `sixdof_follow_segment` | `CCA3D_straight.m`; new L1 + PD |
+| `uav/dynamics.py` | Dynamics protocol + models | `Dynamics`, `Kinematic3DoF`, `SixDoF`, `QuadMixer`, `quat_*` | inlined EOM in `CCA3D_straight.m`; new 6-DoF rigid body |
+| `uav/profiles.py` | Quadrotor parameter profiles | `QuadRotorProfile`, `quadrotor_profile`, `available_profiles` | *(new)* |
 | `viz/plotting.py` | 2D/3D plots | `plot_path_2d`, `plot_objects_mpl`, `plot_objects_pyvista`, `plot_scene_mpl`, `plot_weather_contour` | `PlotPath.m`, `PlotObject.m`, `plotting_everything.m` |
 | `viz/animate.py` | rt animation & video export | `animate_trajectory` | `figure(69)` animation in `main.m` + `VideoWriter` |
+| `viz/uav_marker.py` | UAV marker drawing (quadrotor wireframe / arrow) | `draw_quadrotor`, `draw_arrow` | *(new)* |
 | `viz/gamma_plot.py` | Gamma distribution | `plot_gamma_distribution` | `PlotGamma` nested in `main.m`, `main_ALPHA.m`, `main_sg_generation.m` |
 | `scripts/run_main.py` | Primary entry point | `main`, `run` | `main.m` |
 | `scripts/run_alpha.py` | Alpha sweep demo | `run` | `main_ALPHA.m` |
@@ -84,6 +86,13 @@ resolved `Param` back out for reproducibility.
 | `scripts/path_dist_objective_v2.py` | Parameterized cost | `path_dist_objective_v2` | `path_dist_objective_v2.m` |
 | `scripts/realtime_analysis.py` | Timing plots | `run` | `real-time_analysis/realtime_analysis.m` |
 | `scripts/experiments/*.py` | Sandbox scripts | | `for_experimenting/*.m` |
+| `sim/__init__.py` | PyBullet simulation package | `Aviary`, `DSLPIDControl`, `PIDVelocityControl`, `run_pybullet` | *(new — ported from gym-pybullet-drones-routing)* |
+| `sim/enums.py` | Drone model & physics enums | `DroneModel`, `Physics` | *(new)* |
+| `sim/aviary.py` | Simplified PyBullet drone environment | `Aviary` | `BaseAviary` from gym-pybullet-drones |
+| `sim/control.py` | PID controllers for PyBullet drones | `DSLPIDControl`, `PIDVelocityControl`, `nnlsRPM` | DSLPIDControl, PIDVelocityControl, BaseControl |
+| `sim/weather_texture.py` | Weather field → PyBullet ground texture | `WeatherGroundPlane`, `weather_to_rgba` | *(new)* |
+| `sim/runner.py` | PyBullet simulation runner (integration glue) | `run_pybullet`, `run_pybullet_segment` | *(new)* |
+| `sim/assets/*.urdf` | Drone URDF models (CF2X, CF2P, HB, Racer) | | Copied from gym-pybullet-drones |
 
 ## 4. Data Model
 
@@ -153,9 +162,17 @@ The modulated velocity `UBar = M * u` is integrated as `Wp[t+1] = Wp[t] + UBar *
 For full derivations see `legacy/IFDS.m` (lines 157–272 in the original file)
 and the reference paper.
 
-The **CCA3D path follower** computes a "carrot" point ahead on the current path
-segment and drives the UAV towards it with a PD-like yaw/pitch law; its kinematic
-integrator is identical to `Kinematic3DoF.step`.
+The **CCA3D path follower** (kinematic mode) computes a "carrot" point ahead on
+the current path segment and drives the UAV towards it with a PD-like yaw/pitch
+law; its kinematic integrator is identical to `Kinematic3DoF.step`.
+
+The **L1 / Pure-Pursuit path follower** (6-DoF mode) projects a reference point
+on the segment at look-ahead distance *L1*, computes a lateral acceleration
+command (Park, Deyst, How 2004), then feeds it to a **PD attitude controller**
+that converts the inertial acceleration into `[T, τx, τy, τz]` commands for the
+`SixDoF` quadrotor dynamics model. The `SixDoF` model uses a 13-state vector
+`[x,y,z,u,v,w,qw,qx,qy,qz,p,q,r]` with quaternion attitude and RK45
+integration.
 
 ## 7. Scenes
 
@@ -206,7 +223,10 @@ Key flags:
 - `--rho0`, `--sigma0`, `--delta-g`, `--sf` — IFDS tuning.
 - `--k`, `--bu`, `--bl` — weather effect strength + upper/lower bounds.
 - `--speed`, `--cca-preset {1..5}` — UAV speed & CCA gains.
-- `--dynamics {kinematic,sixdof}` — reserved for future 6-DoF swap.
+- `--dynamics {kinematic,sixdof,pybullet}` — kinematic uses CCA3D; sixdof uses L1 + PD attitude; pybullet runs PyBullet physics.
+- `--drone-profile {generic,dji_matrice_100,crazyflie}` — quadrotor profile for 6-DoF mode.
+- `--drone-model {cf2x,cf2p,hb,racer}` — PyBullet URDF model (only with `--dynamics pybullet`).
+- `--pybullet-gui` / `--no-pybullet-gui` — open/suppress PyBullet GUI window.
 - `--no-plot`, `--save-video PATH`, `--quiet` — I/O control.
 
 ## 9. Extension Points
@@ -225,14 +245,38 @@ Key flags:
 3. Write `_sceneXX(obj, x, y, z, rt, alpha)` in `ifds/scenes.py` and add it
    to `_SCENE_BUILDERS`.
 
-### Swap dynamics to 6-DoF
+### Using 6-DoF dynamics
 
-1. Implement `SixDoF.step` in `uav/dynamics.py` with rigid-body EOM:
-   `[pN, pE, pD, u, v, w, qx, qy, qz, qw, p, q, r]` state, body-frame forces/moments.
-   Use `scipy.integrate.solve_ivp` with `DOP853`.
-2. Adapt `uav/guidance.py` (or add a new guidance law) to emit body-frame
-   commands rather than `(u1, u2)` lateral accelerations.
-3. No change is needed in `ifds/*` — the planner consumes waypoints only.
+The 6-DoF rigid-body quadrotor model is already implemented:
+
+```
+python -m scripts.run_main --config configs/scene3_static.yaml --dynamics sixdof
+python -m scripts.run_main --dynamics sixdof --drone-profile dji_matrice_100
+```
+
+- `SixDoF` (in `uav/dynamics.py`) — quaternion-based rigid body with RK45.
+- `QuadMixer` — maps `[T, τx, τy, τz]` to/from individual rotor thrusts.
+- `QuadRotorProfile` (in `uav/profiles.py`) — presets: `generic`, `dji_matrice_100`, `crazyflie`.
+- `l1_guidance` + `attitude_pd_control` (in `uav/guidance.py`) — outer/inner loop.
+- No change is needed in `ifds/*` — the planner consumes waypoints only.
+
+### Using PyBullet simulation
+
+The PyBullet integration runs IFDS path planning as before, then drives a
+physics-simulated drone through the waypoints using PID control:
+
+```
+python -m scripts.run_main --config configs/scene3_static.yaml --dynamics pybullet
+python -m scripts.run_main --dynamics pybullet --drone-model hb --no-pybullet-gui
+python -m scripts.run_main --dynamics pybullet --drone-model cf2x --pybullet-gui
+```
+
+- `sim/aviary.py` — simplified `BaseAviary` (not a `gym.Env`); loads plane + drone URDF, steps physics.
+- `sim/control.py` — `DSLPIDControl` (position PID for CF2X/CF2P) and `PIDVelocityControl` (velocity PID for HB).
+- `sim/weather_texture.py` — renders `WeatherField` as an RGBA ground-plane texture using matplotlib's `turbo` colourmap, with white `b_u` contour. Updated per time-step.
+- `sim/runner.py` — the integration glue. Takes pre-computed IFDS paths, spawns the aviary, drives the drone with PID, records trajectory.
+- Drone models: CF2X (Crazyflie X), CF2P (Crazyflie +), HB (Hummingbird), Racer — URDF files in `sim/assets/`.
+- The existing matplotlib post-hoc plots work from the returned trajectory dict.
 
 ### Replace the optimizer backend
 
@@ -243,6 +287,11 @@ without touching `run_ifds`.
 ## 10. Testing & Validation
 
 - `tests/test_scenes.py` — shape factory sanity (Gamma==1 on surface samples).
+- `tests/test_dynamics.py` — quaternion helpers, QuadMixer, SixDoF EOM (hover,
+  free-fall, quaternion normalization, protocol compliance), drone profiles.
+- `tests/test_guidance.py` — L1 guidance, PD attitude controller, segment follower.
+- `tests/test_sim.py` — PyBullet smoke tests: aviary init/close, URDF parsing,
+  step execution, PID controller instantiation & compute, weather texture shape.
 - `tests/test_ifds_regression.py` — runs the default scene-3 static config and
   compares total trajectory length against `data/allTraj_opt.mat` /
   `data/allTraj_opt2.mat` (tolerance ~50% by default because MATLAB `fmincon`
@@ -264,7 +313,11 @@ Inherited from the original MATLAB (`legacy/README.md`):
 
 Python-specific TODOs:
 
-- Implement `SixDoF` EOM & integrator (see `uav/dynamics.py`).
+- ~~Implement `SixDoF` EOM & integrator~~ — ✅ done (`uav/dynamics.py`).
+- ~~L1 guidance + PD attitude controller~~ — ✅ done (`uav/guidance.py`).
+- ~~Quadrotor profiles~~ — ✅ done (`uav/profiles.py`).
+- ~~UAV marker visualisation~~ — ✅ done (`viz/uav_marker.py`).
+- ~~PyBullet integration~~ — ✅ done (`sim/` package; `--dynamics pybullet`).
 - Add fuel-consumption / flight-time objective to `ifds/optimizer.py`.
 - Benchmark `calc_ubar` and vectorize hot loops if needed (Numba optional).
 - Validate `WeatherField.sample` interpolator semantics against MATLAB

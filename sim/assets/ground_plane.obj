@@ -1,0 +1,17 @@
+# Ground plane mesh for weather texture overlay.
+# Covers IFDS domain: x=[0,200], y=[-100,100], z=0
+# UV maps (0,0)-(1,1) across the full face so the texture is not tiled.
+
+v 0.0 -100.0 0.0
+v 200.0 -100.0 0.0
+v 200.0 100.0 0.0
+v 0.0 100.0 0.0
+
+vt 0.0 0.0
+vt 1.0 0.0
+vt 1.0 1.0
+vt 0.0 1.0
+
+vn 0.0 0.0 1.0
+
+f 1/1/1 2/2/1 3/3/1 4/4/1

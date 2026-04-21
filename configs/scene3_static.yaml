@@ -14,11 +14,11 @@ ifds:
   rho0_initial: 1.0
   sigma0_initial: 1.0
   use_optimizer: OFF
-  rg: 10.0
+  rg: 1.0
 
 weather:
-  k: 0.5
-  env: static
+  k: 0.2
+  env: dynamic
 
 uav:
   c: 10.0

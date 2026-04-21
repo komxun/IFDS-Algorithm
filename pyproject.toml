@@ -18,6 +18,8 @@ dependencies = [
     "imageio>=2.34",
     "imageio-ffmpeg>=0.4.9",
     "pyyaml>=6.0",
+    "pybullet>=3.2.5",
+    "Pillow>=10.0",
 ]
 
 [project.optional-dependencies]
@@ -27,7 +29,7 @@ dev = ["pytest>=7.4", "ruff>=0.4"]
 ifds-run = "scripts.run_main:main"
 
 [tool.setuptools.packages.find]
-include = ["ifds*", "uav*", "viz*"]
+include = ["ifds*", "uav*", "viz*", "sim*"]
 
 [tool.ruff]
 line-length = 110

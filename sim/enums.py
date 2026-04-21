@@ -1,0 +1,26 @@
+"""Drone-model and physics-mode enumerations for PyBullet simulation.
+
+Ported from ``gym-pybullet-drones-routing/gym_pybullet_drones/utils/enums.py``.
+"""
+
+from enum import Enum
+
+
+class DroneModel(Enum):
+    """Drone models enumeration class."""
+
+    CF2X = "cf2x"   # Bitcraze Crazyflie 2.0 in the X configuration
+    CF2P = "cf2p"   # Bitcraze Crazyflie 2.0 in the + configuration
+    HB = "hb"       # Generic quadrotor (AscTec Hummingbird inertial properties)
+    RACE = "racer"  # Racer drone in the X configuration
+
+
+class Physics(Enum):
+    """Physics implementations enumeration class."""
+
+    PYB = "pyb"                          # Base PyBullet physics update
+    DYN = "dyn"                          # Explicit dynamics model
+    PYB_GND = "pyb_gnd"                  # PyBullet physics update with ground effect
+    PYB_DRAG = "pyb_drag"                # PyBullet physics update with drag
+    PYB_DW = "pyb_dw"                    # PyBullet physics update with downwash
+    PYB_GND_DRAG_DW = "pyb_gnd_drag_dw" # PyBullet with ground effect, drag, and downwash

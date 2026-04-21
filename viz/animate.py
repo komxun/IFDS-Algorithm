@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from viz.plotting import _set_equal_aspect_3d, plot_objects_mpl, plot_path_2d, plot_weather_ground
+from viz.uav_marker import draw_arrow, draw_quadrotor
 
 if TYPE_CHECKING:
     from ifds.objects import Object
@@ -26,6 +27,7 @@ def animate_trajectory(
     destin: np.ndarray,
     *,
     weather=None,
+    attitude: dict | None = None,
     multi_target: bool = False,
     xini: float = 0.0,
     yini: float = 0.0,
@@ -52,6 +54,17 @@ def animate_trajectory(
             if prev:
                 stacked = np.concatenate(prev, axis=1)
                 ax.plot(stacked[0], stacked[1], stacked[2], 'k', linewidth=1.2)
+        # UAV marker at current position
+        cur = traj[rt] if rt < len(traj) else None
+        if cur is not None and cur.size:
+            pos = cur[:, -1]
+            if attitude is not None and "quat" in attitude:
+                idx = min(rt, len(attitude["quat"]) - 1)
+                draw_quadrotor(ax, pos, attitude["quat"][idx])
+            else:
+                psi_f = attitude["psi"][min(rt, len(attitude["psi"]) - 1)] if attitude else 0.0
+                gamma_f = attitude["gamma"][min(rt, len(attitude["gamma"]) - 1)] if attitude else 0.0
+                draw_arrow(ax, pos, psi_f, gamma_f)
         ax.set_xlim(0, 200)
         ax.set_ylim(-100, 100)
         ax.set_zlim(0, 100)
