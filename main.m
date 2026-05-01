@@ -22,7 +22,7 @@ scene = 3;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "static";    % "static" "dynamic"
