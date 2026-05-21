@@ -103,10 +103,10 @@ pos = [x_i; y_i; z_i];
 % body SE(3) geometric tracking controller.
 P.Ts      = 0.01;              % [s] controller / integrator step
 P.gravity = 9.81;              % [m/s^2]
-P.mass    = 4.34;              % [kg]
-P.Jxx     = 0.0820;            % [kg m^2]
-P.Jyy     = 0.0845;
-P.Jzz     = 0.1377;
+P.mass    = 1.5;               % [kg]  (3DR Iris — Gazebo iris_with_standoffs)
+P.Jxx     = 0.008;             % [kg m^2]
+P.Jyy     = 0.015;
+P.Jzz     = 0.017;
 P.tau     = 0.05;              % dirty-derivative filter time constant
 % Control gains (Lee 2011, arXiv:1003.2005v4)
 %   Note: se3quad/matlab/param.m first sets kx = 16*mass then overwrites
@@ -117,8 +117,8 @@ P.kv      = 5.6 * P.mass;
 P.kR      = 8.81;
 P.kOmega  = 2.54;
 % Airframe geometry (for per-rotor force allocation)
-P.d       = 0.315;             % [m]   CoM to rotor distance (b1-b2 plane)
-P.c_tauf  = 8.004e-3;          % [m]   rotor drag / thrust ratio
+P.d       = 0.22;              % [m]   CoM to rotor distance (Iris arm length)
+P.c_tauf  = 0.016;             % [m]   rotor drag / thrust ratio (Iris)
 P.Mix     = inv([1 1 1 1; 0 -P.d 0 P.d; ...
                  P.d 0 -P.d 0; -P.c_tauf P.c_tauf -P.c_tauf P.c_tauf]);
 

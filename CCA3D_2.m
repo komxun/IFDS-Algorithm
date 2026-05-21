@@ -22,7 +22,7 @@ animation = 0;
 t(1) = 0 ;                 % Simulation Time [s]
 
 %% .. UAV Physical Parameters (matching SE(3) controller, Crazyflie 2.X)
-m     = 0.468;             % [kg]      mass
+m     = 1.5;               % [kg]      mass (3DR Iris)
 g_acc = 9.81;              % [m/s^2]   gravity
 % Aerodynamic parameters (small quadrotor reference area / coefficients)
 rho   = 1.225;             % [kg/m^3]  air density (sea level)
