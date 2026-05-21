@@ -1,0 +1,314 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{hyperref}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{remark}
+\newtheorem*{remark}{Remark}
+
+% Shorthand
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\G}{\Gamma}
+\newcommand{\Gp}{\Gamma_p}
+\newcommand{\Om}{\Omega}
+\newcommand{\xib}{\bm{\xi}}
+\newcommand{\nb}{\mathbf{n}}
+\newcommand{\tb}{\mathbf{t}}
+
+\title{Mathematical Proofs for the Modified Boundary Function $\Gamma_p(\xi)$ in the IFDS Algorithm}
+\author{Supplementary Notes to \S\,Constraint Matrix Derivation}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Setup and Notation}
+
+Throughout this document we adopt the notation of the main report. Let
+\begin{itemize}
+    \item $\G:\R^3\to\R$ be the original object boundary function of the IFDS algorithm, with $\G(\xib)\ge 1$ and $\G(\xib)=1$ on the obstacle surface;
+    \item $\Om:\R^3\to\R$ be the environmental obstruction field obtained by bicubic interpolation of the constraint matrix $\mathbf{A}$, with values normalised to $[0,1]$;
+    \item $B_L,B_U\in\R$ with $0\le B_L<B_U\le 1$ be the lower and upper boundary thresholds;
+    \item $k>0$ be the amplitude constant of the shifted exponential;
+    \item the constraint-shaping function in closed form is
+    \begin{equation}
+    \label{eq:g}
+        g(\Om(\xib)) \;=\; k\left\{\exp\!\left(\frac{\Om(\xib)-B_L}{B_U-B_L}\,
+        \ln\!\left(\frac{\G(\xib)-1}{k}+1\right)\right)-1\right\};
+    \end{equation}
+    \item the modified boundary function is
+    \begin{equation}
+    \label{eq:Gp}
+        \Gp(\xib) \;=\; \G(\xib) - g(\Om(\xib)).
+    \end{equation}
+\end{itemize}
+For brevity, whenever the spatial dependence is clear we will write $\G$, $\Gp$, $\Om$ in place of $\G(\xib)$, $\Gp(\xib)$, $\Om(\xib)$. We further assume $\G>1$ in the interior of the working domain (the surface $\G=1$ is handled separately as a trivial case).
+
+A useful auxiliary quantity is
+\begin{equation}
+    \label{eq:L_lambda}
+    L \;\coloneqq\; \ln\!\left(\frac{\G-1}{k}+1\right),
+    \qquad
+    \lambda \;\coloneqq\; \frac{\Om-B_L}{B_U-B_L},
+\end{equation}
+so that \eqref{eq:g} becomes the compact expression
+\begin{equation}
+    \label{eq:g_compact}
+    g \;=\; k\left(e^{\lambda L}-1\right).
+\end{equation}
+Since $\G>1$ and $k>0$, we have $L>0$; and for $\Om\in[B_L,B_U]$, we have $\lambda\in[0,1]$.
+
+\bigskip
+
+\section{Piecewise Behaviour of $\Gp(\xib)$}
+
+\begin{theorem}[Three-case behaviour]
+\label{thm:three_cases}
+Let $\G(\xib)>1$, $k>0$, $B_L<B_U$. With $\Gp$ defined by \eqref{eq:Gp}--\eqref{eq:g},
+\begin{equation*}
+    \Gp(\xib) \;=\;
+    \begin{cases}
+        \G(\xib), & \Om(\xib)\le B_L, \\[2pt]
+        \in\bigl(1,\ \G(\xib)\bigr), & B_L<\Om(\xib)<B_U, \\[2pt]
+        1, & \Om(\xib)\ge B_U.
+    \end{cases}
+\end{equation*}
+In particular, the two boundary conditions
+\begin{align}
+    g\bigl(\Om=B_L\bigr) &= 0, \tag{BC2}\\
+    g\bigl(\Om=B_U\bigr) &= \G(\xib)-1 \tag{BC1}
+\end{align}
+are both satisfied by the closed form \eqref{eq:g}.
+\end{theorem}
+
+\begin{proof}
+Using the compact form \eqref{eq:g_compact} together with the definitions \eqref{eq:L_lambda}:
+
+\smallskip
+\noindent\textbf{Case $\Om=B_L$.} Then $\lambda=0$, giving
+\[
+    g \;=\; k\!\left(e^{0\cdot L}-1\right) \;=\; k(1-1) \;=\; 0,
+\]
+so $\Gp=\G-0=\G$. This simultaneously proves (BC2).
+
+\smallskip
+\noindent\textbf{Case $\Om=B_U$.} Then $\lambda=1$, giving
+\[
+    g \;=\; k\!\left(e^{L}-1\right)
+      \;=\; k\!\left(\frac{\G-1}{k}+1-1\right)
+      \;=\; \G-1,
+\]
+so $\Gp=\G-(\G-1)=1$. This simultaneously proves (BC1).
+
+\smallskip
+\noindent\textbf{Case $B_L<\Om<B_U$.} Then $\lambda\in(0,1)$ and, since $L>0$, $\lambda L\in(0,L)$. The exponential is strictly increasing, hence
+\[
+    e^{\lambda L} \;\in\; (e^{0},\,e^{L}) \;=\; \left(1,\ \tfrac{\G-1}{k}+1\right).
+\]
+Multiplying by $k$ and subtracting $k$,
+\[
+    g \;=\; k(e^{\lambda L}-1) \;\in\; \bigl(0,\ \G-1\bigr),
+\]
+so $\Gp=\G-g\in(1,\G)$.
+
+\smallskip
+\noindent\textbf{Clipping cases $\Om\le B_L$ and $\Om\ge B_U$.} These are handled by definition (values below $B_L$ are ignored, values above $B_U$ are capped), consistent with the enumerated behaviour above.
+
+Collecting the three cases proves the theorem. \qed
+\end{proof}
+
+\begin{corollary}[Continuity at the thresholds]
+\label{cor:continuity}
+$\Gp(\xib)$ is continuous in $\Om$ at $\Om=B_L$ and $\Om=B_U$: the left- and right-hand limits agree with the clipped values.
+\end{corollary}
+
+\begin{proof}
+From Theorem~\ref{thm:three_cases},
+$\lim_{\Om\to B_L^{+}}\Gp = \G = \Gp|_{\Om\le B_L}$ and
+$\lim_{\Om\to B_U^{-}}\Gp = 1 = \Gp|_{\Om\ge B_U}$. \qed
+\end{proof}
+
+\bigskip
+
+\section{Preservation of Normal--Tangent Orthogonality}
+
+The IFDS streamline-deflection mechanism relies on the normal $\nb$ and the tangential direction $\tb$ being mutually orthogonal. The next proposition shows that this property is preserved when the original $\G$ is replaced by the modified $\Gp$, regardless of the specific shapes of $\G$ and $\Om$.
+
+\begin{proposition}[Algebraic orthogonality of $\nb_p$ and $\tb_p$]
+\label{prop:orthogonality}
+Define the modified normal and tangent vectors
+\[
+    \nb_p \;=\; \nabla\Gp \;=\;
+    \begin{bmatrix}
+        \dfrac{\partial\Gp}{\partial x}\\[4pt]
+        \dfrac{\partial\Gp}{\partial y}\\[4pt]
+        \dfrac{\partial\Gp}{\partial z}
+    \end{bmatrix},
+    \qquad
+    \tb_p \;=\;
+    \begin{bmatrix}
+        \dfrac{\partial\Gp}{\partial y}\\[4pt]
+        -\dfrac{\partial\Gp}{\partial x}\\[4pt]
+        0
+    \end{bmatrix}.
+\]
+Then
+\[
+    \nb_p^{\top}\tb_p \;=\; 0
+\]
+identically, i.e.\ for \emph{every} choice of $\G$, $\Om$, $B_L$, $B_U$, and $k$ satisfying the standing hypotheses.
+\end{proposition}
+
+\begin{proof}
+Write $a=\partial\Gp/\partial x$, $b=\partial\Gp/\partial y$, $c=\partial\Gp/\partial z$. Then
+\[
+    \nb_p^{\top}\tb_p
+    \;=\; a\cdot b \;+\; b\cdot(-a) \;+\; c\cdot 0
+    \;=\; ab-ba
+    \;=\; 0.
+\]
+The identity is purely algebraic and does not depend on the specific form of $\Gp$. \qed
+\end{proof}
+
+\begin{remark}
+Proposition~\ref{prop:orthogonality} shows that introducing the environmental correction $g(\Om)$ does not violate the geometric assumptions underpinning the IFDS streamline construction. The modified field $\Gp$ can therefore be used as a drop-in replacement for $\G$ in all downstream equations that use $\nb$ and $\tb$.
+\end{remark}
+
+\bigskip
+
+\section{Validity of $\Gp$ as an IFDS Boundary Function}
+
+The IFDS formulation requires a boundary function $\G$ satisfying $\G\ge 1$, with equality exactly on the obstacle surface. We show that this property is preserved by $\Gp$.
+
+\begin{proposition}[Lower bound on $\Gp$]
+\label{prop:lower_bound}
+If $\G(\xib)\ge 1$, $B_L<B_U$, and $k>0$, then
+\[
+    \Gp(\xib) \;\ge\; 1 \qquad\text{for every }\xib\in\R^3,
+\]
+with equality if and only if either $\G(\xib)=1$ (original surface) or $\Om(\xib)\ge B_U$ (environmental boundary).
+\end{proposition}
+
+\begin{proof}
+We consider the three regimes from Theorem~\ref{thm:three_cases}.
+
+\smallskip
+\noindent\emph{Regime $\Om\le B_L$.} Here $\Gp=\G\ge 1$ by assumption, with equality iff $\G=1$.
+
+\smallskip
+\noindent\emph{Regime $\Om\ge B_U$.} Here $\Gp=1$ by definition.
+
+\smallskip
+\noindent\emph{Regime $B_L<\Om<B_U$.} By Theorem~\ref{thm:three_cases}, $\Gp\in(1,\G)\subset(1,\infty)$, so $\Gp>1$ strictly.
+
+\smallskip
+In all three cases $\Gp\ge 1$, and the equality cases are exactly as stated. \qed
+\end{proof}
+
+\begin{remark}
+Proposition~\ref{prop:lower_bound} ensures that the zero-level set of $\Gp-1$ defines a well-posed obstacle surface (the union of the original object surface and the newly formed environmental boundary), so that the IFDS potential-flow machinery remains applicable without modification.
+\end{remark}
+
+\bigskip
+
+\section{Monotonicity of $g$ and the Adaptive Response}
+
+\begin{proposition}[Strict monotonicity]
+\label{prop:monotone}
+For $\Om\in[B_L,B_U]$, the constraint-shaping function $g$ defined in \eqref{eq:g} is strictly increasing in $\Om$; equivalently, the modified boundary function $\Gp=\G-g$ is strictly decreasing in $\Om$.
+\end{proposition}
+
+\begin{proof}
+Using \eqref{eq:g_compact}, differentiate with respect to $\Om$:
+\[
+    \frac{dg}{d\Om}
+    \;=\; k\cdot\frac{L}{B_U-B_L}\,\exp\!\left(\frac{\Om-B_L}{B_U-B_L}\,L\right).
+\]
+Under the standing hypotheses $k>0$, $B_U>B_L$, and $\G>1$ (so that $L>0$), every factor is strictly positive, giving $dg/d\Om>0$ on $[B_L,B_U]$. Hence $g$ is strictly increasing, and $\Gp=\G-g$ is strictly decreasing. \qed
+\end{proof}
+
+\begin{remark}
+Proposition~\ref{prop:monotone} formalises the intuitive claim that $g$ exhibits a smooth, monotone ``ramp-up'' behaviour: negligible influence near $\Om=B_L$, then adaptive exponential growth until the cap at $\Om=B_U$. This monotonicity underlies the path-planner's ability to respond progressively to increasing environmental constraints rather than switching discontinuously.
+\end{remark}
+
+\bigskip
+
+\section{Regularity and Boundedness of $\nabla\Gp$}
+\label{sec:regularity}
+
+The gradient expressions for $\Gp$ derived in the main report contain the factors $1/(B_U-B_L)$, $\ln\!\left(\tfrac{\G-1}{k}+1\right)$, and $1/(\G-1+k)$. A natural well-posedness question is whether $\nabla\Gp$ remains bounded under the standing hypotheses, since the IFDS streamline equations rely on it.
+
+\begin{proposition}[Regularity and local boundedness of $\nabla\Gp$]
+\label{prop:regularity}
+Assume the standing hypotheses ($k>0$, $B_L<B_U$, $\G(\xib)\ge 1$). Suppose in addition that, on an open set $U\subset\R^3$,
+\begin{enumerate}
+    \item[\textnormal{(i)}] $\G,\Om\in C^{1}(U)$;
+    \item[\textnormal{(ii)}] $\G(\xib)>1$ on $U$ \textnormal{(}equivalently, $U$ is disjoint from the original obstacle surface\textnormal{)};
+    \item[\textnormal{(iii)}] $\nabla\G$ and $\nabla\Om$ are bounded on every compact $K\subset U$.
+\end{enumerate}
+Then $\Gp\in C^{1}(U)$ and $\nabla\Gp$ is bounded on every compact $K\subset U$. In particular, the denominators $(B_U-B_L)$ and $(\G-1+k)$ appearing in $\partial\Gp/\partial x$, $\partial\Gp/\partial y$, $\partial\Gp/\partial z$ remain bounded away from zero, so no singularity is introduced by the construction.
+\end{proposition}
+
+\begin{proof}
+Recall the compact form $\Gp = \G - k(e^{\lambda L}-1)$ with $\lambda = (\Om-B_L)/(B_U-B_L)$ and $L = \ln\!\left(\tfrac{\G-1}{k}+1\right)$.
+
+\smallskip
+\noindent\emph{Smoothness.} Under (i)--(ii), $\lambda$ is $C^{1}$ on $U$ as a linear function of $\Om$, and $L$ is $C^{1}$ on $U$ since the argument $\tfrac{\G-1}{k}+1>1>0$. The exponential is $C^{\infty}$, so the composition $e^{\lambda L}$ is $C^{1}$, hence $\Gp\in C^{1}(U)$.
+
+\smallskip
+\noindent\emph{Local boundedness.} Fix a compact $K\subset U$. By continuity and (ii), there exist constants $0<m_{\G}\le M_{\G}<\infty$ with
+\[
+    1 \;<\; m_{\G} \;\le\; \G(\xib) \;\le\; M_{\G} \qquad\text{for all }\xib\in K.
+\]
+Consequently:
+\begin{itemize}
+    \item $L = \ln\!\left(\tfrac{\G-1}{k}+1\right)$ is bounded on $K$, with
+    $L\in\!\left[\ln\!\left(\tfrac{m_{\G}-1}{k}+1\right),\ \ln\!\left(\tfrac{M_{\G}-1}{k}+1\right)\right]\!\subset(0,\infty)$.
+    \item $\G-1+k\ge m_{\G}-1+k>0$, so $1/(\G-1+k)$ is bounded on $K$.
+    \item By hypothesis, $|\nabla\G|$ and $|\nabla\Om|$ are bounded on $K$ by some $M_{\nabla}<\infty$.
+    \item $1/(B_U-B_L)$ is a fixed positive constant.
+    \item $\Om$ is bounded on $K$ by continuity, hence $\lambda$ is bounded, and so $e^{\lambda L}\le e^{|\lambda|\cdot\sup_K L}$ is bounded.
+\end{itemize}
+The chain rule applied to \eqref{eq:Gp}--\eqref{eq:g} yields, for each coordinate $\alpha\in\{x,y,z\}$,
+\[
+    \frac{\partial\Gp}{\partial\alpha}
+    \;=\; \frac{\partial\G}{\partial\alpha}
+        \;-\; k\,e^{\lambda L}\!\left[
+            \frac{L}{B_U-B_L}\,\frac{\partial\Om}{\partial\alpha}
+            \;+\; \frac{\lambda}{\G-1+k}\,\frac{\partial\G}{\partial\alpha}
+        \right].
+\]
+Each factor on the right-hand side is bounded on $K$ by the items above, so $|\partial\Gp/\partial\alpha|$ is bounded on $K$. Hence $\nabla\Gp$ is bounded on $K$.
+
+\smallskip
+\noindent\emph{No artificial singularity.} The only candidate denominators introduced by the construction are $B_U-B_L$ (a fixed positive constant) and $\G-1+k\ge k>0$. Neither vanishes under the standing hypotheses, so the modification $\G\mapsto\Gp$ does not create a singularity that was absent in $\nabla\G$. \qed
+\end{proof}
+
+\begin{remark}
+Hypothesis~(ii) excludes the original obstacle surface itself ($\G=1$), where $L=0$ and the gradient formulas remain finite but the geometric construction degenerates by design (the surface is the obstacle). On the surface, IFDS uses the surface normal directly, so this exclusion is not a practical limitation. Hypothesis~(iii) is automatically satisfied whenever $\G$ is a polynomial superquadric (as in the standard IFDS object library) and $\Om$ is a bicubic interpolant of a bounded constraint matrix --- both of which hold in the main report.
+\end{remark}
+
+\bigskip
+
+\section*{Summary}
+
+The five results above jointly establish that the modified boundary function $\Gp$:
+\begin{enumerate}
+    \item reproduces the enumerated piecewise behaviour stated in the main report (Theorem~\ref{thm:three_cases}, Corollary~\ref{cor:continuity});
+    \item preserves the algebraic orthogonality of the IFDS normal and tangent vectors (Proposition~\ref{prop:orthogonality});
+    \item remains a valid IFDS boundary function with $\Gp\ge 1$ (Proposition~\ref{prop:lower_bound});
+    \item provides a smooth, strictly monotone adaptive response to the environmental field (Proposition~\ref{prop:monotone});
+    \item is $C^{1}$ with locally bounded gradient, introducing no artificial singularity into the IFDS streamline equations (Proposition~\ref{prop:regularity}).
+\end{enumerate}
+Together, these properties justify the use of $\Gp$ as a drop-in replacement for $\G$ in every stage of the IFDS pipeline.
+
+\end{document}

@@ -97,7 +97,7 @@ function [Paths, Object, totalLength, foundPath] = IFDS(rho0, sigma0, alpha_deg,
                 yy = Wp(2,t);
                 zz = Wp(3,t);
 
-                if t>1000
+                if t>10000
                     break
                 end
                 Object = create_scene(scene, Object, xx, yy, zz, rt, alpha_deg);
