@@ -5,16 +5,16 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 1;              % Figure(69)m 1: see the simulation
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 100;          % [s] simulation time for the path 
-dt = 0.2;                    % [s] IFDS time step
+dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 150 / dt_traj;                   % [s] (50) time for the whole scenario 
-simMode = 2;          % 1: by time, 2: by target distance
+rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+simMode = 1;          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 44;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -22,15 +22,15 @@ scene = 2;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+rho0  = 1.51;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -104,21 +104,21 @@ pos = [x_i; y_i; z_i];
 P.Ts      = 0.01;              % [s] controller / integrator step
 P.gravity = 9.81;              % [m/s^2]
 P.mass    = 4.34;              % [kg]
-P.Jxx     = 0.0820;            % [kg m^2]
-P.Jyy     = 0.0845;
-P.Jzz     = 0.1377;
+P.Jxx     = 0.0820; % [kg-m2]
+P.Jyy     = 0.0845; % [kg-m2]
+P.Jzz     = 0.1377; % [kg-m2]
 P.tau     = 0.05;              % dirty-derivative filter time constant
 % Control gains (Lee 2011, arXiv:1003.2005v4)
 %   Note: se3quad/matlab/param.m first sets kx = 16*mass then overwrites
 %   with kx = 4*mass near the end of the file — the overwrite is the
 %   effective value used in the reference simulation.
-P.kx      = 4   * P.mass;
+P.kx      = 16   * P.mass;
 P.kv      = 5.6 * P.mass;
 P.kR      = 8.81;
 P.kOmega  = 2.54;
 % Airframe geometry (for per-rotor force allocation)
-P.d       = 0.315;             % [m]   CoM to rotor distance (b1-b2 plane)
-P.c_tauf  = 8.004e-3;          % [m]   rotor drag / thrust ratio
+P.d       = 0.22;             % [m]   CoM to rotor distance (b1-b2 plane)
+P.c_tauf  = 0.016;          % [m]   rotor drag / thrust ratio
 P.Mix     = inv([1 1 1 1; 0 -P.d 0 P.d; ...
                  P.d 0 -P.d 0; -P.c_tauf P.c_tauf -P.c_tauf P.c_tauf]);
 
@@ -525,15 +525,15 @@ for rt = simulate
     view(0,90)
     % set(gca, "FontSize", 18)
 
-%     subplot(7,2,[9 11 13])
-%     plotting_everything
-%     view(90,0)
-%     % set(gca, "FontSize", 18)
-% 
-%     subplot(7,2,[10 12 14])
-%     plotting_everything
-%     view(0,0)
-%     % set(gca, "FontSize", 18)
+    subplot(7,2,[9 11 13])
+    plotting_everything
+    view(90,0)
+    % set(gca, "FontSize", 18)
+
+    subplot(7,2,[10 12 14])
+    plotting_everything
+    view(0,0)
+    % set(gca, "FontSize", 18)
 
 
     if k ~=0
