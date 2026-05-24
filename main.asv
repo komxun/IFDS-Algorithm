@@ -10,11 +10,11 @@ showDisp = 1;
 tsim = 100;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 150 / dt_traj;                   % [s] (50) time for the whole scenario 
-simMode = 2;          % 1: by time, 2: by target distance
+rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+simMode = 1;          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 41;      % Scenario selection
+scene = 44;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -25,12 +25,12 @@ delta_g = 10;            % [m]  minimum allowed gap distance
 k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
-env = "static";    % "static" "dynamic"
+env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+rho0  = 1.51;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -71,11 +71,8 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 3;             % [m/s] UAV cruising speed (30)
-% Starting location
-Xini = 0;
-Yini = 0;
-Zini = 0;
+C  = 10;             % [m/s] UAV cruising speed (30)
+
 
 
 
@@ -93,13 +90,65 @@ z_i = 5;
 psi_i = 0;          % [rad] Initial Yaw angle
 gamma_i = 0;        % [rad] Initial Pitch angle
 
+% Starting path location
+Xini = 0;
+Yini = 0;
+Zini = z_i;
+
 pos = [x_i; y_i; z_i];
-% UAV velocity history; initialised to cruise speed C so that the first
-% CCA3D_2 segment receives a non-zero target/initial speed (with V = 0,
-% the new thrust controller would command zero thrust and the drone would
-% never accelerate from rest).
-v0 = 0.1;
-vhist = [v0];
+
+% _______________________ SE(3) Controller Setup _________________________
+% Ported from se3quad/matlab (Lee et al. 2010/2011, arXiv:1003.2005).
+% Replaces CCA3D_2 path follower + kinematic UAV model with full rigid-
+% body SE(3) geometric tracking controller.
+P.Ts      = 0.01;              % [s] controller / integrator step
+P.gravity = 9.81;              % [m/s^2]
+P.mass    = 4.34;              % [kg]
+P.Jxx     = 0.0820;            % [kg m^2]
+P.Jyy     = 0.0845;
+P.Jzz     = 0.1377;
+P.tau     = 0.05;              % dirty-derivative filter time constant
+% Control gains (Lee 2011, arXiv:1003.2005v4)
+%   Note: se3quad/matlab/param.m first sets kx = 16*mass then overwrites
+%   with kx = 4*mass near the end of the file — the overwrite is the
+%   effective value used in the reference simulation.
+P.kx      = 4   * P.mass;
+P.kv      = 5.6 * P.mass;
+P.kR      = 8.81;
+P.kOmega  = 2.54;
+% Airframe geometry (for per-rotor force allocation)
+P.d       = 0.315;             % [m]   CoM to rotor distance (b1-b2 plane)
+P.c_tauf  = 8.004e-3;          % [m]   rotor drag / thrust ratio
+P.Mix     = inv([1 1 1 1; 0 -P.d 0 P.d; ...
+                 P.d 0 -P.d 0; -P.c_tauf P.c_tauf -P.c_tauf P.c_tauf]);
+
+% UAV state: full SE(3)  (p, v, R, Omega)
+state.p     = [x_i; y_i; z_i];
+state.v     = zeros(3,1);
+state.R     = eye(3);                     % start level, body-1 along +x
+state.Omega = zeros(3,1);
+
+% Dirty-derivative filters (acceleration / jerk of actual velocity).
+% Handles are preserved across segments so memory persists.
+filters.dv1dt = DirtyDerivative(1, P.tau,    P.Ts);
+filters.dv2dt = DirtyDerivative(2, P.tau*10, P.Ts);
+
+% Speed history (magnitude of linear velocity)
+vhist = [norm(state.v)];
+
+% SE(3) telemetry logger (appended to at every controller step).
+% All arrays grow along columns; final size ~ tsim/P.Ts.
+logger.t      = [];   % 1xN  global time                       [s]
+logger.x      = [];   % 3xN  actual position                   [m]
+logger.xd     = [];   % 3xN  desired position                  [m]
+logger.v      = [];   % 3xN  actual velocity                   [m/s]
+logger.vd     = [];   % 3xN  desired velocity                  [m/s]
+logger.Omega  = [];   % 3xN  actual body-rate                  [rad/s]
+logger.Omegac = [];   % 3xN  commanded body-rate               [rad/s]
+logger.Psi    = [];   % 1xN  SO(3) geodesic error function
+logger.f      = [];   % 1xN  total collective thrust           [N]
+logger.M      = [];   % 3xN  moment vector                     [N.m]
+logger.deltaF = [];   % 4xN  per-rotor forces  (Mix * [f; M])  [N]
 
 
 x_guess = [rho0; sigma0];
@@ -239,22 +288,23 @@ for rt = 1:rtsim
 
     if foundPath ~= 1 || isempty(Paths{rt}) || size(Paths{rt},2)==1
         disp("CAUTION : Path not found at t = " +num2str(rt) + " s")
-        disp("*UAV is standing by — holding position*")
+        disp("*UAV is standing by — holding position (SE(3) hover)*")
 
-        % Decelerate toward zero (V_ref = 0) over dt_traj seconds.
-        % Position is frozen; velocity decays through the same thrust /
-        % drag dynamics used in CCA3D_2.
-        vhist(end+1) = hold_position(vhist(end), dt_traj);
-        pos(:,end+1) = [x_i; y_i; z_i];
-        traj{rt}     = [x_i; y_i; z_i];
+        % SE(3) hover: xd = current position, zero ref velocity.
+        [hold_pos, hold_vm, state, filters, ~, logger] = ...
+            hold_position(state, filters, dt_traj, P, logger);
+        x_i = state.p(1);  y_i = state.p(2);  z_i = state.p(3);
+        pos(:,end+1) = state.p;
+        traj{rt}     = hold_pos;
+        vhist(end+1) = hold_vm(end);
         continue
     end
 
     % Compute Path Following Algorithm
-    trajectory = zeros(3, length(Paths{rt}));
-    trajectory(:,1) = [x_i; y_i; z_i];
+    % Accumulate dense SE(3) trajectory (all controller steps) so the
+    % 3D plot is smooth rather than waypoint-spaced.
+    trajectory = [x_i; y_i; z_i];
 
-    i = 1;
     dtcum = 0;
     
     for j = 1:size(Paths{rt},2)-1
@@ -271,29 +321,27 @@ for rt = 1:rtsim
         
         % Check if the waypoint is ahead of current position
         if a*(x_i - Wf(1)) + b*(y_i - Wf(2)) + c*(z_i - Wf(3)) < 0
-            
+
             err = [err, norm([x_i-Wf(1), y_i-Wf(2), z_i-Wf(3)])];
-            [x, y, z, vm, psi, gamma, timeSpent] = CCA3D_2(Wi, Wf, x_i, y_i, z_i, psi_i, gamma_i, vhist(end), tuning);
-            x_i = x(end);
-            y_i = y(end);
-            z_i = z(end);
-            psi_i = psi(end);
-            gamma_i = gamma(end);
+            % --- SE(3) geometric tracker (replaces CCA3D_2) ---------
+            dt_budget = dt_traj - dtcum;            % remaining time budget
+            [pos_seg, vm_seg, state, filters, timeSpent, logger] = ...
+                SE3Track(Wi, Wf, state, filters, C, dt_budget, P, logger);
+            x_i = state.p(1);  y_i = state.p(2);  z_i = state.p(3);
             dtcum = dtcum + timeSpent;
-            % Param.C = vm(end);
-          
-            trajectory(:,i+1) = [x y z]';
-            i = i+1;
+
+            % Append the dense segment trajectory (skip duplicate first
+            % sample which equals the previous segment's last sample).
+            trajectory = [trajectory, pos_seg(:, 2:end)];
         else
 %             disp("skip waypoint #" + num2str(j)) 
         end   
     end
     pos(:,end+1) = [x_i; y_i; z_i];
     errn{rt} = err;
-    trajectory = trajectory(:,1:i);   % remove extra element
     traj{rt} = trajectory;
     timer(rt) = toc;
-    vhist(end+1) = vm(end);
+    vhist(end+1) = norm(state.v);           % end-of-iteration speed magnitude
     disp("Computed time = " + num2str((timer(rt))) + " s")
 
 end
@@ -413,13 +461,14 @@ syms omega(X,Y) wet(X,Y)
 
 %%
 figure(69)
+grid off
 if animation
     simulate = 1:size(traj,2);
 else
     simulate = size(traj,2);
 end
-for rt = simulate
-% for rt = 23
+% for rt = simulate
+for rt = 5
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -445,6 +494,7 @@ for rt = simulate
     end
     % set(gca, "FontSize", 18)
     subplot(7,2,[2 4 6 8]);
+    
     plotting_everything
     if k~=0
         hold on
@@ -452,16 +502,16 @@ for rt = simulate
         % colormap(flipud(bone))
         colormap turbo 
         if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 0.5,'LineStyle', '-')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+            % contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'FaceAlpha', 0.5, 'LineStyle', '-')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
         end
         clabel(C2,h2,'FontSize',15,'Color','w')
         colorbar
-        hold off
+        
     end
     if ~animation
         if rt>1
@@ -475,6 +525,7 @@ for rt = simulate
     end
 
     view(0,90)
+    gird
     % set(gca, "FontSize", 18)
 
 %     subplot(7,2,[9 11 13])
@@ -559,6 +610,10 @@ plot(vhist, 'o-')
 ylabel("Speed (m/s)")
 xlabel("Elapsed time (s)")
 grid on
+
+
+%% SE(3) Controller Telemetry (translational / rotational / actuators)
+se3_plot(logger, P);
 
 
 %% Realtime analysis

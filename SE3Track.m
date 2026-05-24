@@ -49,6 +49,10 @@ e3 = [0; 0; 1];
 J  = diag([P.Jxx P.Jyy P.Jzz]);
 m  = P.mass;  g = P.gravity;
 
+%% Project current drone position onto segment so the reference starts
+%  at the nearest point on the segment, not always at Wi.
+s0 = max(0, min(dot(state.p - Wi, d_hat), L_seg));
+
 %% History buffers (pre-allocate conservatively)
 N_max    = ceil(dt_max / Ts) + 1;
 pos_hist = zeros(3, N_max);
@@ -61,13 +65,12 @@ t  = 0;
 k  = 1;
 while t < dt_max
     %% --- Reference trajectory (linear along segment at V_ref) --------
-    s   = min(V_ref * t, L_seg);                  % arclength so far [m]
-    xd  = Wi + s * d_hat;                         % desired position [m]
-    if s < L_seg
-        xd_1dot = V_ref * d_hat;                  % desired velocity
-    else
-        xd_1dot = zeros(3,1);                     % stop at end-point
-    end
+    %  xd is capped at Wf so the carrot doesn't overshoot in position,
+    %  but xd_1dot is always V_ref*d_hat so the drone flies THROUGH
+    %  each waypoint at cruise speed instead of braking to a stop.
+    s       = V_ref * t + s0;                     % arclength (uncapped) [m]
+    xd      = Wi + min(s, L_seg) * d_hat;         % position: cap at Wf
+    xd_1dot = V_ref * d_hat;                      % velocity: always forward
     xd_2dot = zeros(3,1);
     xd_3dot = zeros(3,1);
     xd_4dot = zeros(3,1);

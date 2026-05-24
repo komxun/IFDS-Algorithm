@@ -16,11 +16,13 @@ function [Gamma, Gamma_star] = PlotObject(Object, Rg, rt, rtsim, X, Y, Z, Gamma,
         Gamma_star(X, Y, Z) = Gamma - ( (Rstar + Rg)/Rstar )^2 + 1;
 
 %         if rtsim > 1
-            fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
-            fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
+% 'Crude fast plot'
+            % fimplicit3(Gamma == 1,'EdgeColor','k','FaceAlpha',1,'MeshDensity',20), hold on
+            % fimplicit3(Gamma_star == 1, 'EdgeColor','k','FaceAlpha',0,'MeshDensity',20)
 %         else
-            % fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',100, 'FaceColor', 'w'), hold on
-            % fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',100, 'FaceColor', 'w')
+% 'High-res plot'
+            fimplicit3(Gamma == 1,'EdgeColor','none','FaceAlpha',1,'MeshDensity',100, 'FaceColor', 'w'), hold on
+            fimplicit3(Gamma_star == 1, 'EdgeColor','none','FaceAlpha',0.2,'MeshDensity',100, 'FaceColor', 'w')
 %         end
 
         xlim([0 200])

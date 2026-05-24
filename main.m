@@ -8,13 +8,13 @@ saveVid = 0;
 animation = 1;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 100;          % [s] simulation time for the path 
-dt = 0.2;                    % [s] IFDS time step
+dt = 0.1;                    % [s] IFDS time step
 dt_traj = 1;                 % [s] Trajectory time step
-rtsim = 150 / dt_traj;                   % [s] (50) time for the whole scenario 
-simMode = 2;          % 1: by time, 2: by target distance
+rtsim = 50 / dt_traj;                   % [s] (50) time for the whole scenario 
+simMode = 1;          % 1: by time, 2: by target distance
 targetThresh = 2;          % [m] allowed error for final target distance 
 multiTarget = uint8(0);      % 1: multi-target 0: single-target
-scene = 2;      % Scenario selection
+scene = 44;      % Scenario selection
                 % 0) NO object 1) 1 object, 2) 2 objects 
                 % 3) 3 objects 4) 3 complex objects
                 % 7) non-urban 12) urban environment
@@ -22,15 +22,15 @@ scene = 2;      % Scenario selection
 % ___________________Features Control Parameters___________________________
 useOptimizer = 0; % 0:Off  1:Global optimized  2: Local optimized
 delta_g = 10;            % [m]  minimum allowed gap distance
-k = 0;   % Higher(1000) = more effect from weather
+k = 0.5;   % Higher(1000) = more effect from weather
            % Lower(~0.01) = less effect  0 = no weather effect
 
 env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1;          % Repulsive parameter (rho >= 0)
-sigma0 = 1;      % Tangential parameter 
+rho0  = 2.50;          % Repulsive parameter (rho >= 0)
+sigma0 = 0.01;      % Tangential parameter 
 
 
 % Good: rho0 = 2, simga0 = 0.01
@@ -71,7 +71,7 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 5;             % [m/s] UAV cruising speed (30)
+C  = 10;             % [m/s] UAV cruising speed (30)
 
 
 
@@ -461,13 +461,14 @@ syms omega(X,Y) wet(X,Y)
 
 %%
 figure(69)
+grid off
 if animation
     simulate = 1:size(traj,2);
 else
     simulate = size(traj,2);
 end
-for rt = simulate
-% for rt = 23
+% for rt = simulate
+for rt = 10
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -482,9 +483,9 @@ for rt = simulate
         set(gca, 'YDir', 'normal')
  
         if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 1,'LineStyle', 'none')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+            % contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
             contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
@@ -493,6 +494,7 @@ for rt = simulate
     end
     % set(gca, "FontSize", 18)
     subplot(7,2,[2 4 6 8]);
+    
     plotting_everything
     if k~=0
         hold on
@@ -500,16 +502,16 @@ for rt = simulate
         % colormap(flipud(bone))
         colormap turbo 
         if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 1,'LineStyle', 'none')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+            % contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'FaceAlpha', 1, 'LineStyle', '-')
+            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',1,'LineColor', 'w', 'LineWidth', 2);
         end
         clabel(C2,h2,'FontSize',15,'Color','w')
         colorbar
-        hold off
+        
     end
     if ~animation
         if rt>1
@@ -523,6 +525,7 @@ for rt = simulate
     end
 
     view(0,90)
+    grid off
     % set(gca, "FontSize", 18)
 
 %     subplot(7,2,[9 11 13])

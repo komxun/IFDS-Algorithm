@@ -2,14 +2,26 @@
 % Destination
 pltDestin = scatter3(destin(1,1),destin(1,2),destin(1,3), 'xr', 'xr', 'sizedata', 150, 'LineWidth', 1.5);
 
-hold on, grid on, axis equal
+hold on,  axis equal
+% grid on,
 
-% if animation
-pltArrow = quiver3(traj{rt}(1,1), traj{rt}(2,1), traj{rt}(3,1),...
-    traj{rt}(1,end)-traj{rt}(1,1), traj{rt}(2,end)-traj{rt}(2,1),...
-    traj{rt}(3,end)-traj{rt}(3,1), 'ok','filled', 'LineWidth', 1.5, 'MaxHeadSize',100,'AutoScaleFactor', 2,...
-    'Alignment','tail', 'MarkerSize', 12, 'MarkerFaceColor','w','ShowArrowHead','on');
-% end
+% Heading vector for the UAV (segment displacement, fall back to +X)
+uavPos     = traj{rt}(:,1);
+uavHeading = [traj{rt}(1,end)-traj{rt}(1,1);
+              traj{rt}(2,end)-traj{rt}(2,1);
+              traj{rt}(3,end)-traj{rt}(3,1)];
+if norm(uavHeading) < eps
+    uavHeading = [1; 0; 0];
+end
+
+% Direction-of-motion arrow (no marker -- UAV is drawn as a quadcopter below)
+pltArrow = quiver3(uavPos(1), uavPos(2), uavPos(3), ...
+    uavHeading(1), uavHeading(2), uavHeading(3), ...
+    'Color','k','LineWidth',1.5,'MaxHeadSize',100,'AutoScaleFactor',2, ...
+    'Alignment','tail','ShowArrowHead','on','Marker','none');
+
+% Quadcopter marker at the UAV position
+PlotQuadcopter(uavPos, uavHeading, 4, 'k');
 
 
 
