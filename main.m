@@ -5,7 +5,7 @@ clc, clear, close all
 % ___________________Simulation Set-up Parameters__________________________
 fontSize = 20;
 saveVid = 0;
-animation = 1;              % Figure(69)m 1: see the simulation
+animation = 0;              % Figure(69)m 1: see the simulation
 showDisp = 1;
 tsim = 100;          % [s] simulation time for the path 
 dt = 0.1;                    % [s] IFDS time step
@@ -29,7 +29,7 @@ env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 2.50;          % Repulsive parameter (rho >= 0)
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 
@@ -71,7 +71,7 @@ end
 tuning = [kappa, delta, kd];
 
 % _______________________ UAV Parameters _________________________________
-C  = 10;             % [m/s] UAV cruising speed (30)
+C  = 9.5;             % [m/s] UAV cruising speed (30)
 
 
 
@@ -79,7 +79,7 @@ C  = 10;             % [m/s] UAV cruising speed (30)
 % Target Destination
 Xfinal = 200;
 Yfinal = 0;
-Zfinal = 10;
+Zfinal = 50;
 % Zfinal = 0;
 
 % UAV's Initial State
@@ -467,8 +467,8 @@ if animation
 else
     simulate = size(traj,2);
 end
-% for rt = simulate
-for rt = 10
+for rt = simulate
+% for rt = 1
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -528,15 +528,15 @@ for rt = 10
     grid off
     % set(gca, "FontSize", 18)
 
-%     subplot(7,2,[9 11 13])
-%     plotting_everything
-%     view(90,0)
-%     % set(gca, "FontSize", 18)
-% 
-%     subplot(7,2,[10 12 14])
-%     plotting_everything
-%     view(0,0)
-%     % set(gca, "FontSize", 18)
+    subplot(7,2,[9 11 13])
+    plotting_everything
+    view(90,0)
+    % set(gca, "FontSize", 18)
+
+    subplot(7,2,[10 12 14])
+    plotting_everything
+    view(0,0)
+    % set(gca, "FontSize", 18)
 
 
     if k ~=0
@@ -617,12 +617,13 @@ se3_plot(logger, P);
 
 
 %% Realtime analysis
-s =  load('time_journal_dyna_2.mat');
+% s =  load('time_journal_dyna_2.mat');
+s =  load('time_optim_journal_dyna_2.mat');
 figure
-stem(timer(1:25), 'LineWidth', 2)
+stem(timer(1:size(traj,2)), 'filled', 'LineWidth', 2, 'Marker', 'diamond')
 hold on, grid on, grid minor
-stem(s.timer(1:25), 'LineWidth', 2)
-legend("Optimised IFDS Local Path", "IFDS Local Path")
+stem(s.timer(1:25), 'LineWidth', 1.5)
+legend("IFDS Local Path", "Optimized IFDS Local Path")
 xlabel("Elapsed Simulation Time (s)", 'FontSize', 20)
 ylabel("Computed Time (s)", 'FontSize', 20)
 set(gca, 'FontSize', 30, 'LineWidth', 1.5)
@@ -637,22 +638,27 @@ pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.
 hold on, grid on, grid minor, axis equal
 pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
 % Obstacle
-% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
 camlight
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]')
 set(gca, 'FontSize', 20, 'LineWidth', 1.5)
+xlim([0, 200])
+ylim([-100, 100])
+zlim([0 100])
 
 subplot(1,2,2)
 pltOpt = plot3(tr.allTraj(1,:),tr.allTraj(2,:), tr.allTraj(3,:), 'LineWidth', 2.5);
 hold on, grid on, grid minor, axis equal
 pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
 % Obstacle
-% PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
+PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 view(0,90)
-legend([pltOpt, pltOg],"Optimised Trajectory", "Non-optimised Trajectory")
+legend([pltOpt, pltOg],"optimized Trajectory", "Non-optimized Trajectory")
 set(gca, 'FontSize', 20, 'LineWidth', 1.5)
 
+xlim([0, 200])
+ylim([-100, 100])
 
 
 

@@ -29,7 +29,7 @@ env = "dynamic";    % "static" "dynamic"
 
 % ______________________IFDS Tuning Parameters_____________________________
 sf    = uint8(0);   % Shape-following demand (1=on, 0=off)
-rho0  = 1.51;          % Repulsive parameter (rho >= 0)
+rho0  = 2.5;          % Repulsive parameter (rho >= 0)
 sigma0 = 0.01;      % Tangential parameter 
 
 
@@ -468,7 +468,7 @@ else
     simulate = size(traj,2);
 end
 % for rt = simulate
-for rt = 5
+for rt = 25
     if rt>2
         prevTraj = [traj{1:rt-1}];
     end
@@ -483,9 +483,9 @@ for rt = 5
         set(gca, 'YDir', 'normal')
  
         if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 1,'LineStyle', 'none')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
+            % contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
             contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'LineStyle', '-')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
@@ -502,12 +502,12 @@ for rt = 5
         % colormap(flipud(bone))
         colormap turbo 
         if env == "dynamic"
-            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 0.5,'LineStyle', '-')
+            contourf(1:200,-100:99,weatherMatMod(:,:,rt),30,'FaceAlpha', 1,'LineStyle', 'none')
             [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,rt), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
             % contourf(1:200,-100:99,weatherMatMod(:,:,rt), 30)
         elseif env == "static"
-            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'FaceAlpha', 0.5, 'LineStyle', '-')
-            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',0,'LineColor', 'w', 'LineWidth', 2);
+            contourf(1:200,-100:99,weatherMatMod(:,:,15),30,'FaceAlpha', 1, 'LineStyle', '-')
+            [C2,h2] = contourf(1:200, -100:99, weatherMat(:,:,15), [B_U, B_U], 'FaceAlpha',1,'LineColor', 'w', 'LineWidth', 2);
         end
         clabel(C2,h2,'FontSize',15,'Color','w')
         colorbar
@@ -525,7 +525,7 @@ for rt = 5
     end
 
     view(0,90)
-    gird
+    grid off
     % set(gca, "FontSize", 18)
 
 %     subplot(7,2,[9 11 13])
@@ -622,7 +622,7 @@ figure
 stem(timer(1:25), 'LineWidth', 2)
 hold on, grid on, grid minor
 stem(s.timer(1:25), 'LineWidth', 2)
-legend("Optimised IFDS Local Path", "IFDS Local Path")
+legend("optimized IFDS Local Path", "IFDS Local Path")
 xlabel("Elapsed Simulation Time (s)", 'FontSize', 20)
 ylabel("Computed Time (s)", 'FontSize', 20)
 set(gca, 'FontSize', 30, 'LineWidth', 1.5)
@@ -650,7 +650,7 @@ pltOg = plot3(allTraj(1,:),allTraj(2,:), allTraj(3,:),'r--', 'LineWidth', 2.5);
 % PlotObject(Object, delta_g, rt, rtsim, X, Y, Z, Gamma, Gamma_star);
 xlabel('X [m]'); ylabel('Y [m]'); zlabel('Z [m]'); camlight
 view(0,90)
-legend([pltOpt, pltOg],"Optimised Trajectory", "Non-optimised Trajectory")
+legend([pltOpt, pltOg],"optimized Trajectory", "Non-optimized Trajectory")
 set(gca, 'FontSize', 20, 'LineWidth', 1.5)
 
 
